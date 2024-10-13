@@ -1,4 +1,4 @@
-# Your project name here
+# Financial Investment Assistant
 
 ## Information about this repository
 
