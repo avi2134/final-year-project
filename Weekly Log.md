@@ -52,11 +52,36 @@
 
 ### Weekly Summary
 * Key Achievements:
-  * Started the report and read abour different techniques for analysis.
+  * Started the report and read about different techniques for analysis.
 * Challenges Faced:
   * No significant challanges for this week.
 * Lessons Learned:
-  * No significant lessons kearned.
+  * No significant lessons learned.
+
+### Future Goals
+* Next Week's Priorities:
+  * Continue working on the report.
+  * Continue researching techniques and algorithms.
+
+## Week of November 4, 2024 to November 10, 2024
+
+### Weekly Summary
+* No progress made this week.
+
+### Future Goals
+* Next Week's Priorities:
+  * Continue working on the report.
+  * Continue researching techniques and algorithms.
+
+## Week of November 11, 2024 to November 17, 2024
+
+### Weekly Summary
+* Key Achievements:
+  * Started the report and read about different techniques for analysis.
+* Challenges Faced:
+  * No significant challanges for this week.
+* Lessons Learned:
+  * No significant lessons learned.
 
 ### Future Goals
 * Next Week's Priorities:
