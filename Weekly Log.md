@@ -87,3 +87,18 @@
 * Next Week's Priorities:
   * Continue working on the report.
   * Continue researching techniques and algorithms.
+
+## Week of November 18, 2024 to December 5, 2025
+
+### Weekly Summary
+* Key Achievements:
+  * Finished working on interactive dashboard.
+  * Worked on the financial models. 
+* Challenges Faced:
+  * The daily request limit for Alpha Vantage API gave some challanges for testing.
+* Lessons Learned:
+  * No significant lessons learned.
+
+### Future Goals
+* Next Week's Priorities:
+  * Continue working on the models.
