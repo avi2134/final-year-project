@@ -29,3 +29,61 @@
 * Next Week's Priorities:
   * Come up with some features I want to include and work on the report.
   * Try to decide on how the UI should look.
+
+## Week of October 21, 2024 to October 27, 2024
+
+### Weekly Summary
+* Key Achievements:
+  * Started the set up to verify users' email address.
+  * Researched different analysis techniques and started working on the report. 
+* Challenges Faced:
+  * Figuring out the set up for email verification app.
+  * Trying to think of ways to write the introduction for the report.
+* Lessons Learned:
+  * Read the documentation more clearly.
+  * Do more in depth research and look for more articles. 
+
+### Future Goals
+* Next Week's Priorities:
+  * Continue working on the report.
+  * Try to finalise email verification app if possible.
+
+## Week of October 28, 2024 to November 3, 2024
+
+### Weekly Summary
+* Key Achievements:
+  * Started the report and read about different techniques for analysis.
+* Challenges Faced:
+  * No significant challanges for this week.
+* Lessons Learned:
+  * No significant lessons learned.
+
+### Future Goals
+* Next Week's Priorities:
+  * Continue working on the report.
+  * Continue researching techniques and algorithms.
+
+## Week of November 4, 2024 to November 10, 2024
+
+### Weekly Summary
+* No progress made this week.
+
+### Future Goals
+* Next Week's Priorities:
+  * Continue working on the report.
+  * Continue researching techniques and algorithms.
+
+## Week of November 11, 2024 to November 17, 2024
+
+### Weekly Summary
+* Key Achievements:
+  * Started the report and read about different techniques for analysis.
+* Challenges Faced:
+  * No significant challanges for this week.
+* Lessons Learned:
+  * No significant lessons learned.
+
+### Future Goals
+* Next Week's Priorities:
+  * Continue working on the report.
+  * Continue researching techniques and algorithms.
