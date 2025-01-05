@@ -1,17 +1,56 @@
 {% extends 'base.html' %}
 
-{% block title %} Index {% endblock %}
+{% block title %} Dashboard {% endblock %}
 
 {% block content %}
     {% if user.is_authenticated %}
-        Hi {{ user.username }}!
-        <form action="{% url 'logout' %}" method="post">
-          {% csrf_token %}
-          <button type="submit">Log Out</button>
-        </form>
-    {% else %}
-        <p>You are not logged in or signed up</p>
-        <a href="{% url 'login' %}">Log In</a>
-        <a href="{% url 'signup' %}">Sign p</a>
+
+        {% include 'navbar.html' %}
+
+        <div class="container mt-4">
+            <h1>Interactive Stock Dashboard</h1>
+            <p>Select a stock symbol and time range to visualize its closing prices.</p>
+
+            <!-- Form for user input -->
+            <form method="get" class="mb-4">
+                <div class="row">
+                    <!-- Stock Symbol Input -->
+                    <div class="col-md-4">
+                        <input type="text" name="symbol" class="form-control" placeholder="Enter Stock Symbol (e.g., AAPL)" value="{{ stock_symbol }}">
+                    </div>
+                    <!-- Time Range Dropdown -->
+                    <div class="col-md-4">
+                        <select name="time_range" class="form-select">
+                            <option value="daily" {% if time_range == "Daily" %}selected{% endif %}>Daily</option>
+                            <option value="weekly" {% if time_range == "Weekly" %}selected{% endif %}>Weekly</option>
+                            <option value="monthly" {% if time_range == "Monthly" %}selected{% endif %}>Monthly</option>
+                        </select>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <div class="col-md-4">
+                        <button type="submit" class="btn btn-primary">View Chart</button>
+                    </div>
+                </div>
+            </form>
+
+            <!-- Display the Chart -->
+            {% if chart_html %}
+                <h3>{{ stock_symbol }} - {{ time_range }} Closing Prices</h3>
+                <div>{{ chart_html|safe }}</div>
+            {% else %}
+                <div class="alert alert-danger">{{ error_message }}</div>
+            {% endif %}
+
+            <!-- Add Legend or Tips -->
+            <div class="mt-4">
+                <h5>Understanding the Chart</h5>
+                <ul>
+                    <li><strong>Daily:</strong> Shows daily closing prices for the last 30 days.</li>
+                    <li><strong>Weekly:</strong> Aggregates closing prices by week.</li>
+                    <li><strong>Monthly:</strong> Aggregates closing prices by month.</li>
+                </ul>
+            </div>
+        </div>
     {% endif %}
 {% endblock %}
