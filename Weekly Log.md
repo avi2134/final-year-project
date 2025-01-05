@@ -88,7 +88,7 @@
   * Continue working on the report.
   * Continue researching techniques and algorithms.
 
-## Week of November 18, 2024 to December 5, 2025
+## Weeks of November 18, 2024 to December 5, 2025
 
 ### Weekly Summary
 * Key Achievements:
