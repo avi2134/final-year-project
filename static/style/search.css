@@ -1,0 +1,37 @@
+/* Match search bar width */
+.search-results {
+    position: absolute;
+    width: 100%; /* Same width as input */
+    max-height: 300px;
+    overflow-y: auto;
+    background: white;
+    border: 1px solid #ccc;
+    border-top: none;
+    z-index: 1000;
+    border-radius: 5px;
+    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Style search result items */
+.search-results .result-item {
+    padding: 10px;
+    cursor: pointer; /* Makes it selectable */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* Remove pointer cursor, show text cursor on hover */
+.search-results .result-item:hover {
+    background-color: #f8f9fa;
+}
+
+/* Remove pointer cursor when hovering */
+.search-results .result-item:hover {
+    cursor: text; /* This makes it not show the hand icon */
+}
+
+/* Hide results when clicking elsewhere */
+.hidden {
+    display: none;
+}

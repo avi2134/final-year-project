@@ -1,4 +1,6 @@
 {% extends 'base.html' %}
+{% comment %}
+{% extends 'base.html' %}
 
 {% block title %}
     Login Page
@@ -11,4 +13,52 @@
       {{ form }}
       <button type="submit">Log In</button>
     </form>
+{% endblock %}{% endcomment %}
+
+{#{% extends 'base.html' %}#}
+
+
+{% load static %}
+
+{% block title %}Login{% endblock %}
+
+{% block extra_head %}
+<!-- Link to external CSS -->
+<link rel="stylesheet" href="{% static 'style/registration.css' %}">
 {% endblock %}
+
+{% block content %}
+<div class="container d-flex justify-content-center align-items-center vh-100">
+    <div class="login-container p-4 border border-dark-subtle rounded-1">
+        <h3 class="text-center mb-3">Login to Your Account</h3>
+
+        {% if form.errors %}
+            <div class="alert alert-danger">
+                Invalid username or password. Please try again.
+            </div>
+        {% endif %}
+
+        <form method="post">
+            {% csrf_token %}
+
+            <div class="mb-3 pt-3">
+                <label for="id_username" class="form-label">Username</label>
+                <input type="text" name="username" id="id_username" class="form-control" placeholder="Enter your username" required>
+            </div>
+
+            <div class="mb-3">
+                <label for="id_password" class="form-label">Password</label>
+                <input type="password" name="password" id="id_password" class="form-control" placeholder="Enter your password" required>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100">Login</button>
+        </form>
+
+        <div class="text-center mt-3">
+            <p>Don't have an account? <a href="{% url 'signup' %}" class="text-warning">Sign Up</a></p>
+{#            <p><a href="{% url 'password_reset' %}" class="text-light">Forgot Password?</a></p>#}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
