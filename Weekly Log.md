@@ -88,7 +88,7 @@
   * Continue working on the report.
   * Continue researching techniques and algorithms.
 
-## Weeks of November 18, 2024 to December 5, 2025
+## Weeks of November 18, 2024 to January 5, 2025
 
 ### Weekly Summary
 * Key Achievements:
@@ -96,6 +96,25 @@
   * Worked on the financial models. 
 * Challenges Faced:
   * The daily request limit for Alpha Vantage API gave some challanges for testing.
+* Lessons Learned:
+  * No significant lessons learned.
+
+### Future Goals
+* Next Week's Priorities:
+  * Continue working on the models.
+
+## Weeks of January 6, 2025 to February 3, 2025
+
+### Weekly Summary
+* Key Achievements:
+  * Added new sections (Financial News, Tredning Stocks, Learning Resources) to interactive dashboard.
+  * Tested out different machine leanring models.
+  * Implemented Buy/Sell generator with technical indicators. 
+  * Implemented What-if analysis for past date investments.
+* Challenges Faced:
+  * The daily request limit for Alpha Vantage API gave some challanges for testing.
+  * The Signal generator is a bit strict and does not generate strong signals at the moment.
+  * Deciding different models and libraries for analysis gave me some challange cause of compatibility issues and their accuracy.
 * Lessons Learned:
   * No significant lessons learned.
 
