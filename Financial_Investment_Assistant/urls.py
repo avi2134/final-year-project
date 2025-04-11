@@ -17,5 +17,12 @@ urlpatterns = [
     path('fetch-news/', views.fetch_news, name='fetch_news'),
     path('fetch-trending-stocks/', views.fetch_trending_stocks, name='fetch_trending_stocks'),
     path("fetch-stock-search/", views.fetch_stock_search, name="fetch_stock_search"),
-
+    path('quiz/', views.quiz_page, name='quiz_page'),  # Frontend quiz page
+    path('api/get-quiz-questions/', views.get_quiz_questions, name='get_quiz_questions'),
+    path('api/submit-quiz-answers/', views.submit_quiz_answers, name='submit_quiz_answers'),
+    path('api/get-user-progress/', views.get_user_progress, name='get_user_progress'),
+    path('api/level-up/', views.level_up, name='level_up'),
+    path('api/get-quiz-history/', views.get_quiz_history, name='get_quiz_history'),
+    path('leaderboard/', views.leaderboard_page, name='leaderboard_page'),
+    path('api/get-leaderboard/', views.get_leaderboard, name='get_leaderboard'),
 ]

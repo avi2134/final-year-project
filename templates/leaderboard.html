@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Leaderboard{% endblock %}
+
+{% block content %}
+{% include 'navbar.html' %}
+
+<div class="container mt-5">
+    <h2 class="text-center">🏆 Leaderboard 🏆</h2>
+    <p class="text-center">Top users ranked by total XP.</p>
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+      <strong>Note:</strong> XP only updates on the Leaderboard after passing a level!
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    <div id="leaderboard">
+        <p class="text-center">Loading leaderboard...</p>
+    </div>
+</div>
+
+<script src="{% static 'js/leaderboard.js' %}"></script>
+{% endblock %}

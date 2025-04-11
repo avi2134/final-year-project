@@ -16,7 +16,7 @@
 
         <div class="container mt-4">
             <h1>Interactive Stock Dashboard</h1>
-            <p>Select a stock symbol and time range to visualize its closing prices.</p>
+            <p>Select a stock symbol and time range to visualise its closing prices.</p>
 
             <!-- Form for user input -->
             <form method="get" class="mb-4">
@@ -65,11 +65,18 @@
                 <!-- Latest Financial News -->
                 <div class="col-md-6">
                     <h3 class="mb-3">Latest Financial News</h3>
+
+                    <!-- News Search Bar -->
+                    <div class="input-group mb-3">
+                        <input type="text" id="news-search" class="form-control" placeholder="Enter company or keyword...">
+                        <button class="btn btn-primary" id="search-news-btn">Search</button>
+                    </div>
+
+                    <!-- News List -->
                     <ul class="list-group" id="news-list">
                         <li class="list-group-item">Loading news...</li>
                     </ul>
                 </div>
-
                 <!-- Trending Stocks -->
                 <div class="col-md-6">
                     <h3 class="mb-3">Trending Stocks</h3>
@@ -77,6 +84,8 @@
                         <li class="list-group-item">Fetching data...</li>
                     </ul>
                 </div>
+            </div>
+
             </div>
 
             <!-- Learning Resources -->
@@ -87,20 +96,20 @@
                         <div class="card p-3 shadow">
                             <h5>Stock Market Basics</h5>
                             <p>Learn how the stock market works and key investment principles.</p>
-                            <a href="https://www.investopedia.com/articles/basics/06/investing101.asp" class="btn btn-sm btn-primary" target="_blank">Read More</a>
+                            <a href="https://www.fool.com/investing/stock-market/basics/?msockid=01418347f6d26b2a0619978df7d46a84" class="btn btn-sm btn-primary" target="_blank">Read More</a>
                         </div>
                     </div>
                     <div class="col-md-4">
                         <div class="card p-3 shadow">
                             <h5>Investment Strategies</h5>
                             <p>Explore different strategies like value investing, growth investing, and ETFs.</p>
-                            <a href="https://www.investopedia.com/investing-strategies-5181077" class="btn btn-sm btn-primary" target="_blank">Read More</a>
+                            <a href="https://www.investopedia.com/terms/i/investmentstrategy.asp" class="btn btn-sm btn-primary" target="_blank">Read More</a>
                         </div>
                     </div>
                     <div class="col-md-4">
                         <div class="card p-3 shadow">
                             <h5>Technical Analysis</h5>
-                            <p>Understand how to analyze stock charts, trends, and indicators.</p>
+                            <p>Understand how to analyse stock charts, trends, and indicators.</p>
                             <a href="https://www.investopedia.com/terms/t/technicalanalysis.asp" class="btn btn-sm btn-primary" target="_blank">Read More</a>
                         </div>
                     </div>

@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Investment Quiz{% endblock %}
+
+{% block extra_head %}
+<!-- Link to external CSS -->
+<link rel="stylesheet" href="{% static 'style/quiz.css' %}">
+{% endblock %}
+
+{% block content %}
+{% include 'navbar.html' %}
+
+<div class="container mt-5">
+    <div class="row align-items-center">
+        <div class="col-auto">
+            <img id="level-badge" src="" width="100" height="100" alt="Level Badge">
+        </div>
+        <div class="col-auto">
+            <h2 class="text-capitalize"><span id="quiz-level">Loading...</span></h2>
+        </div>
+    </div>
+
+    <!-- XP Progress Bar with XP Needed Indicator -->
+    <div class="progress mt-4" style="position: relative;">
+        <div id="xp-bar" class="progress-bar progress-bar-striped progress-bar-animated bg-success" role="progressbar" style="width: 0%;" aria-valuemin="0" aria-valuemax="800"></div>
+        <div id="xp-needed-label" style="position: absolute; width: 100%; text-align: center; top: -10px;"></div>
+    </div>
+    <p class="mt-2"><strong>XP:</strong> <span id="xp-points">0 XP / ??? XP to Level Up</span></p>
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+      <strong>Note:</strong> XP only updates on the Leaderboard after passing a level!
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    <div id="alert" class="alert alert-info alert-dismissible fade show" role="alert" style="display: none;">
+      Answer all questions correctly to maximise your XP and secure a top spot on the leaderboard!
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    <!-- Quiz Grid -->
+    <div class="container mt-4 ps-0 pe-0">
+        <div class="row">
+            {% for i in "1234" %}
+            <div class="col-md-3">
+                <div class="card quiz-card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title">Quiz {{ i }}</h5>
+                        <p class="quiz-xp" id="quiz-xp-{{ i }}">XP: Loading...</p>
+                        <button class="btn btn-primary w-100 quiz-button" data-quiz="{{ i }}" data-bs-toggle="modal" data-bs-target="#quizModal">Start Quiz</button>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Quiz Score Modal -->
+    <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h1 class="modal-title fs-5" id="exampleModalLabel">Quiz Score</h1>
+          </div>
+          <div class="modal-body text-center">
+            <p class="lead">XP Earned in This Quiz</p>
+            <div id="container" class="d-flex justify-content-center"></div>
+            <p class="lead fs-6">Click anywhere outside the box to close.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quiz Modal -->
+    <div class="modal fade" id="quizModal" tabindex="-1" aria-labelledby="quizModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="quizModalLabel">Quiz</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="quiz-container">
+                        <p>Select a quiz to start.</p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button id="submit-quiz" class="btn btn-primary" style="display: none;" data-bs-toggle="modal" data-bs-target="#exampleModal">Submit Answers</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <button id="next-level" class="btn btn-success mt-3" onclick="levelUp()" style="display: none;">Proceed to Next Level</button>
+</div>
+
+    <div class="container mt-5 mb-5">
+        <h3>Quiz History</h3>
+        <p>View your past quizzes, correct answers, and explanations.</p>
+
+        <div id="quizHistory">
+            <!-- Quiz history items will be inserted here dynamically -->
+        </div>
+    </div>
+
+<script src="{% static "js/progressbar.js" %}"></script>
+<script src="{% static 'js/quiz.js' %}"></script>
+{% endblock %}

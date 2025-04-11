@@ -1,7 +1,9 @@
 from lib2to3.fixes.fix_input import context
+from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
 from django.http import JsonResponse
 from django.urls import reverse_lazy
+from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import CreateView
 from django.shortcuts import render, redirect
 from django.contrib.auth import login
@@ -17,6 +19,8 @@ import matplotlib.pyplot as plt
 from io import BytesIO
 import base64
 import datetime
+from django.shortcuts import get_object_or_404
+from .models import *
 
 
 def fetch_stock_search(request):
@@ -72,12 +76,12 @@ def fetch_stock_data(symbol, time_range):
     elif time_range == 'monthly':
         return data.get('Monthly Time Series', {})
     return {}
-
+@login_required(login_url='/accounts/login/')
 def index(request):
     stock_symbol = request.GET.get('symbol', 'AAPL')
-    time_range = request.GET.get('time_range', 'daily').capitalize()  # Capitalize here
+    time_range = request.GET.get('time_range', 'daily').capitalize()
 
-    stock_data = fetch_stock_data(stock_symbol, time_range.lower())  # Use lowercase for API
+    stock_data = fetch_stock_data(stock_symbol, time_range.lower())
     chart_html = None
     error_message = None
 
@@ -109,36 +113,63 @@ def index(request):
     return render(request, 'index.html', {
         'chart_html': chart_html,
         'stock_symbol': stock_symbol,
-        'time_range': time_range,  # Already capitalized
+        'time_range': time_range,  # Already capitalised
         'error_message': error_message
     })
 
-# Fetch Latest Financial News
 def fetch_news(request):
     news_api_key = "d781a3bd28f946c78951088c88aa9f45"
-    url = f"https://newsapi.org/v2/top-headlines?category=business&language=en&pageSize=10&apiKey={news_api_key}"
-    response = requests.get(url)
-    news_data = response.json()
-    return JsonResponse(news_data)
+    query = request.GET.get("query", "").strip()  # Get user input query
+    articles = []
+
+    # Fetch finance-related news by default
+    base_url = f"https://newsapi.org/v2/top-headlines?category=business&language=en&pageSize=10&apiKey={news_api_key}"
+
+    # If user searched for a specific keyword, fetch relevant news first
+    if query:
+        search_url = f"https://newsapi.org/v2/everything?q={query}&language=en&sortBy=publishedAt&pageSize=10&apiKey={news_api_key}"
+        response = requests.get(search_url).json()
+        articles = response.get("articles", [])
+
+    # If the search results are less than 10, fill up with general finance news
+    if len(articles) < 10:
+        business_news = requests.get(base_url).json()
+        articles.extend(business_news.get("articles", []))  # Add general news
+        articles = articles[:10]  # Ensure only 10 articles are returned
+
+    return JsonResponse({"articles": articles})
 
 # Fetch Trending Stocks from Yahoo Finance
 def fetch_trending_stocks(request):
     try:
+        # Fetch trending stock symbols from Yahoo Finance API
         url = "https://query1.finance.yahoo.com/v1/finance/trending/US"
-        response = requests.get(url)
+        response = requests.get(url, headers={"User-Agent": "Mozilla/5.0"})
         data = response.json()
 
-        print("API Response:", data)  # Debugging: See what Yahoo Finance API returns
+        print("Raw API Response:", data)  # Debugging
 
-        if 'finance' in data and 'result' in data['finance'] and len(data['finance']['result']) > 0:
+        # Check if the response contains the expected data
+        if "finance" in data and "result" in data["finance"] and len(data["finance"]["result"]) > 0:
             trending_stocks = []
-            for stock in data['finance']['result'][0]['quotes']:
+            symbols = [stock["symbol"] for stock in data["finance"]["result"][0]["quotes"]]
+
+            # Fetch stock prices using Yahoo Finance (yfinance)
+            stock_data = yf.Tickers(" ".join(symbols))
+
+            for symbol in symbols:
+                try:
+                    stock_info = stock_data.tickers[symbol].history(period="1d")
+                    latest_price = round(stock_info['Close'].iloc[-1], 2) if not stock_info.empty else "N/A"
+                except:
+                    latest_price = "N/A"
+
                 trending_stocks.append({
-                    "symbol": stock.get('symbol', 'N/A'),
-                    "price": stock.get('regularMarketPrice', 'N/A')
+                    "symbol": symbol,
+                    "price": latest_price
                 })
 
-            return JsonResponse({"trending": trending_stocks})
+            return JsonResponse({"trending": trending_stocks[:14]})
 
         return JsonResponse({"error": "Unexpected API structure"}, status=500)
 
@@ -153,7 +184,9 @@ def signup_view(request):
             user = form.save(commit=False)
             user.is_active = True  # Skip email verification for now
             user.save()
-            return redirect('login')  # Redirect to login or home page
+            return redirect('login')  # Redirect to Login or home page
+        else:
+            print("Form Errors:", form.errors)
     else:
         form = CustomUserCreationForm()
     return render(request, 'registration/signup.html', {'form': form})
@@ -180,8 +213,8 @@ def calculate_rsi(data, period=14):
 def generate_signals(data, risk_level):
     data['Signal'] = 0
 
-    print("RSI Values:", data['RSI'].tail())  # Print last few RSI values
-    print("EMA Values:", data[['EMA_5', 'EMA_8', 'EMA_13']].tail())  # Print last few EMA values
+    # print("RSI Values:", data['RSI'].tail())  # Print last few RSI values
+    # print("EMA Values:", data[['EMA_5', 'EMA_8', 'EMA_13']].tail())  # Print last few EMA values
 
     if risk_level == 'low':  # Conservative signals
         data.loc[
@@ -257,6 +290,7 @@ def plot_candlestick(data):
     return chart_image
 
 # Buy/Sell page view
+@login_required(login_url='/accounts/login/')
 def buy_sell(request):
     chart_image = None
     error_message = None
@@ -317,7 +351,7 @@ def buy_sell(request):
         'amount_invested': amount_invested if 'amount_invested' in request.GET else '',
         'risk_level': risk_level if 'risk_level' in request.GET else 'moderate',
     })
-
+@login_required(login_url='/accounts/login/')
 def what_if_analysis(request):
     result = None
     chart_image = None
@@ -390,3 +424,158 @@ def what_if_analysis(request):
         'investment_amount': request.GET.get('investment_amount', ''),
     })
 
+@login_required
+def get_quiz_questions(request):
+    user_progress, _ = UserQuizProgress.objects.get_or_create(
+        user=request.user, defaults={'level': QuizLevel.objects.get(name="beginner")}
+    )
+
+    level = user_progress.level
+    quiz_number = int(request.GET.get("quiz", 1))  # Get quiz number from frontend
+
+    # Get all questions for the current level
+    all_questions = list(QuizQuestion.objects.filter(level=level).order_by("id"))
+    quiz_size = max(len(all_questions) // 4, 1)  # Split questions among 4 quizzes
+
+    # Determine the range of questions for this quiz
+    start_index = (quiz_number - 1) * quiz_size
+    end_index = min(start_index + quiz_size, len(all_questions))
+
+    selected_questions = all_questions[start_index:end_index]
+
+    if not selected_questions:
+        return JsonResponse({"message": "No more questions available for this quiz."}, status=400)
+
+    question_list = [{
+        "id": q.id,
+        "question": q.question_text,
+        "options": {"A": q.option_a, "B": q.option_b, "C": q.option_c, "D": q.option_d}
+    } for q in selected_questions]
+
+    return JsonResponse({"questions": question_list, "level": level.name})
+
+@login_required
+def submit_quiz_answers(request):
+    if request.method != "POST":
+        return JsonResponse({"error": "Invalid request method. Use POST."}, status=405)
+
+    try:
+        data = request.POST
+        user_progress = UserQuizProgress.objects.get(user=request.user)
+        quiz_number = request.GET.get("quiz", "1")  # Default to quiz 1
+
+        correct_answers = sum(
+            1 for q_id, answer in data.items() if QuizQuestion.objects.get(id=q_id).correct_answer == answer
+        )
+
+        earned_xp = correct_answers * 10
+
+        # Update XP for this quiz
+        user_progress.xp_per_quiz[quiz_number] = earned_xp
+        user_progress.update_xp()
+        user_progress.save()
+
+        total_xp = user_progress.get_total_xp()
+
+        return JsonResponse({
+            "message": f"Total XP: {total_xp}",
+            "xp_gained": earned_xp,
+            "current_xp": total_xp,
+        })
+
+    except Exception as e:
+        return JsonResponse({"error": "An error occurred."}, status=500)
+
+@login_required
+def get_user_progress(request):
+    user_progress = get_object_or_404(UserQuizProgress, user=request.user)
+
+    level_requirements = {
+        "beginner": 120,
+        "intermediate": 260,
+        "advanced": 420,
+        "expert": 600,
+    }
+    xp_needed = level_requirements.get(user_progress.level.name, 600)
+    total_xp = user_progress.get_total_xp()
+    quiz_xp = {}
+    for quiz, xp in user_progress.xp_per_quiz.items():
+        quiz_xp[int(quiz)] = xp
+
+    return JsonResponse({
+        "level": user_progress.level.name,
+        "xp_points": total_xp,
+        "xp_needed": xp_needed,
+        "quiz_xp": quiz_xp,
+        "quizzes_completed": len(user_progress.xp_per_quiz)
+    })
+
+def level_up(request):
+    user_progress = get_object_or_404(UserQuizProgress, user=request.user)
+
+    # Call the model's level_up function (which handles everything)
+    user_progress.level_up()
+
+    return JsonResponse({"message": "You have advanced to the next level!", "new_level": user_progress.level.name})
+
+@login_required(login_url='/accounts/login/')
+def quiz_page(request):
+    return render(request, 'quiz.html')
+
+@login_required
+def get_quiz_history(request):
+    user_progress = get_object_or_404(UserQuizProgress, user=request.user)
+
+    levels = ["beginner", "intermediate", "advanced", "expert"]
+    history = {}
+    user_level_index = levels.index(user_progress.level.name)  # Get index of current level
+
+    for level in levels[:user_level_index]:  # Only process completed levels
+        history[level] = []
+        all_questions = list(QuizQuestion.objects.filter(level__name=level).order_by("id"))
+
+        # Ensure we process all four quizzes for this level
+        for quiz_num in range(1, 5):
+            quiz_size = max(len(all_questions) // 4, 1)  # Split questions evenly
+            start_index = (quiz_num - 1) * quiz_size
+            end_index = min(start_index + quiz_size, len(all_questions))
+
+            selected_questions = all_questions[start_index:end_index]
+            if not selected_questions:
+                continue  # Skip empty quizzes
+
+            quiz_data = {
+                "quiz_number": quiz_num,
+                "questions": []
+            }
+
+            for question in selected_questions:
+                quiz_data["questions"].append({
+                    "question": question.question_text,
+                    "correct_answer": f"{question.correct_answer}: {getattr(question, f'option_{question.correct_answer.lower()}')}",  # Full correct answer
+                    "explanation": question.explanation or "No explanation provided."
+                })
+
+            history[level].append(quiz_data)
+
+    return JsonResponse({"history": history, "completed_levels": user_level_index > 0})
+
+@login_required
+def get_leaderboard(request):
+    # Get top users sorted by XP first, then by the time they achieved it
+    leaderboard = UserQuizProgress.objects.select_related('user').order_by('-total_xp', 'last_xp_update')[:10]
+
+    leaderboard_data = [
+        {
+            "username": progress.user.username,
+            "xp": progress.total_xp,
+            "rank": index + 1
+        }
+        for index, progress in enumerate(leaderboard)
+    ]
+
+    return JsonResponse({"leaderboard": leaderboard_data})
+
+@login_required(login_url='/accounts/login/')
+def leaderboard_page(request):
+    return render(request, 'leaderboard.html')
