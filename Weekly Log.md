@@ -121,3 +121,24 @@
 ### Future Goals
 * Next Week's Priorities:
   * Continue working on the models.
+
+## Weeks of February 4, 2025 to April 14, 2025
+
+### Weekly Summary
+* Key Achievements:
+  * Added new quiz system where users can earn xp and see their ranks on a leaderboard.
+  * Finalised on XGOBoost for buy/sell.
+  * Finalised LSTM for what-if simulations.
+  * Worked on improving the UI.
+  * Added email verification when users sign up.
+  * Added the feature to use google or github account to log in or sign up.
+* Challenges Faced:
+  * The daily request limit for Alpha Vantage API gave some challanges for testing.
+  * The machine learning models were having some difficulty in running.
+* Lessons Learned:
+  * No significant lessons learned.
+
+### Future Goals
+* Next Week's Priorities:
+  * Continue working on improving the UI and Machine Learning Models.
+  * Integrate the LSTM to what if analysis.
