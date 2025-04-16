@@ -1,0 +1,9 @@
+Hi there,
+
+Welcome to InvestGrow! Thank you for signing up with us. Please confirm your email address by clicking the button below.
+
+{{ activate_url }}
+
+If you didn't request this, you can safely ignore this email.
+
+— The InvestGrow Team

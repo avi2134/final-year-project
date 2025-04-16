@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load static %}
+{% load account %}
+
+{% block title %}Verify Your Email{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'style/registration.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="container d-flex justify-content-center align-items-center vh-100">
+    <div class="login-container p-4 border border-dark-subtle rounded-1 text-center w-100" style="max-width: 500px;">
+        <h3 class="mb-3">📨 Email Verification</h3>
+
+        {% if user.emailaddress_set.all %}
+            {% for email in user.emailaddress_set.all %}
+                <div class="text-start mb-3">
+                    <p>
+                        <strong>Email:</strong> {{ email.email }}<br>
+                        <strong>Status:</strong>
+                        {% if email.verified %}
+                            <span class="text-success">Verified ✅</span>
+                        {% else %}
+                            <span class="text-warning">Not Verified ⚠️</span>
+                        {% endif %}
+                    </p>
+
+                    {% if not email.verified %}
+                        <form method="post" action="{% url 'account_email' %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="email" value="{{ email.email }}">
+                            <button type="submit" name="action_send" class="btn btn-primary w-100">
+                                Resend Verification Email
+                            </button>
+                        </form>
+                    {% endif %}
+                </div>
+                <hr class="text-secondary">
+            {% endfor %}
+        {% else %}
+            <p class="text-muted">No email addresses found.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

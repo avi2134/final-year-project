@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load static %}
+
+{% block title %}Confirm Your Email{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'style/registration.css' %}">
+{% endblock %}
+
+{% block content %}
+{% include "back_button.html" %}
+
+<div class="container d-flex justify-content-center align-items-center vh-100">
+    <div class="login-container p-4 border border-dark-subtle rounded-1 text-center">
+        <h3 class="mb-3">{% trans "Confirm Your Email Address" %}</h3>
+
+        {% if confirmation %}
+            <p>
+                {% blocktrans with email=confirmation.email_address.email user=confirmation.email_address.user %}
+                    Please confirm that <strong>{{ email }}</strong> is the email for user <strong>{{ user }}</strong>.
+                {% endblocktrans %}
+            </p>
+
+            <form method="post" action="{% url 'account_confirm_email' confirmation.key %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-primary mt-3 w-100">{% trans "Confirm" %}</button>
+            </form>
+        {% else %}
+            <p>{% trans "This confirmation link has expired or is invalid." %}</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

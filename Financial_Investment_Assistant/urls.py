@@ -6,12 +6,12 @@ from Financial_Investment_Assistant.views import signup_view
 from django.contrib.auth import views as auth_views
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
-
-    path('login/', auth_views.LoginView.as_view(template_name='registration/login.html'), name='login'),
+    # path('admin/', admin.site.urls),
+    # path('login/', auth_views.LoginView.as_view(template_name='registration/login.html'), name='login'),
     path('', views.index, name='index'),
     path('signup/', signup_view, name='signup'),
-    path('accounts/', include("django.contrib.auth.urls")),
+    path('accounts/', include('allauth.urls')),
+    path("profile/", views.profile_view, name="profile"),
     path('buy_sell/', views.buy_sell, name='buy_sell'),
     path('what-if/', views.what_if_analysis, name='what_if_analysis'),
     path('fetch-news/', views.fetch_news, name='fetch_news'),
@@ -25,4 +25,5 @@ urlpatterns = [
     path('api/get-quiz-history/', views.get_quiz_history, name='get_quiz_history'),
     path('leaderboard/', views.leaderboard_page, name='leaderboard_page'),
     path('api/get-leaderboard/', views.get_leaderboard, name='get_leaderboard'),
+    path("api/stock_data/", views.api_stock_data, name="api_stock_data"),
 ]

@@ -20,9 +20,8 @@
             <!-- Form for user input -->
             <form method="get" class="mb-4">
                 <div class="row">
-                    <div class="col-md-3">
-                        <input name="symbol" type="text" id="stock-search" class="form-control" placeholder="Search for stocks (e.g., Tesla, Apple, MSFT)" value="{{ symbol }}" required>
-                        <ul id="search-results" class="list-group position-absolute mt-1" style="z-index: 1000;"></ul>
+                    <div class="col-md-3 position-relative stock-search-wrapper">
+                        {% include 'stock_search.html' %}
                     </div>
                     <div class="col-md-3">
                         <input type="date" name="investment_date" class="form-control" value="{{ investment_date }}" required>

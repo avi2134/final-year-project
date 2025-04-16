@@ -4,7 +4,7 @@ body {
 }
 
 /* Custom styling for login container */
-.login-container {
+.login-container  {
     background-color: #343a40;
     color: white;
     padding: 30px;

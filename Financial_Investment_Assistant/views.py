@@ -21,7 +21,30 @@ import base64
 import datetime
 from django.shortcuts import get_object_or_404
 from .models import *
+from sklearn.model_selection import train_test_split
+from sklearn.utils.class_weight import compute_sample_weight
+from xgboost import XGBClassifier
+import plotly.graph_objs as go
+import numpy as np
+from django.shortcuts import redirect, render
+from allauth.socialaccount.models import SocialAccount
+from allauth.account.models import EmailAddress
+from .models import UserQuizProgress
 
+@login_required(login_url='/accounts/login/')
+def profile_view(request):
+    user = request.user
+    progress = UserQuizProgress.objects.filter(user=user).first()
+    email = EmailAddress.objects.filter(user=user, primary=True).first()
+    social_accounts = SocialAccount.objects.filter(user=user)
+
+    context = {
+        "user": user,
+        "email": email,
+        "progress": progress,
+        "social_accounts": social_accounts
+    }
+    return render(request, "account/profile.html", context)
 
 def fetch_stock_search(request):
     query = request.GET.get("query", "").strip()
@@ -292,65 +315,125 @@ def plot_candlestick(data):
 # Buy/Sell page view
 @login_required(login_url='/accounts/login/')
 def buy_sell(request):
-    chart_image = None
-    error_message = None
+    symbol = request.GET.get('symbol', 'AAPL')
+    risk_level = request.GET.get('risk_level', 'moderate').strip()
+    shares_owned = request.GET.get('shares_owned', '').strip()
+    amount_invested = request.GET.get('amount_invested', '').strip()
     recommendation = None
+    chart_html = None
+    error_message = None
 
-    if request.method == 'GET' and 'symbol' in request.GET:
-        symbol = request.GET.get('symbol')
-        shares_owned = request.GET.get('shares_owned', '').strip()
-        amount_invested = request.GET.get('amount_invested', '').strip()
-        risk_level = request.GET.get('risk_level', 'moderate').strip()  # Default: moderate
+    try:
+        stock = yf.Ticker(symbol)
+        data = stock.history(period="1y")
+        data = data[['Open', 'High', 'Low', 'Close', 'Volume']]
 
-        # Define the period to consider for analysis (e.g., 6 months ≈ 180 trading days)
-        recent_days = 180  # Use 6 months of data by default
+        # --- Feature Engineering ---
+        data['EMA_5'] = calculate_ema(data, 5)
+        data['EMA_8'] = calculate_ema(data, 8)
+        data['EMA_13'] = calculate_ema(data, 13)
+        data['EMA_26'] = calculate_ema(data, 26)
+        data['RSI'] = calculate_rsi(data)
+        data['SMA_20'] = data['Close'].rolling(20).mean()
+        data['STD_20'] = data['Close'].rolling(20).std()
+        data['Upper_Band'] = data['SMA_20'] + 2 * data['STD_20']
+        data['Lower_Band'] = data['SMA_20'] - 2 * data['STD_20']
+        data['Future_Close'] = data['Close'].shift(-5)
+        data['Future_Return'] = (data['Future_Close'] - data['Close']) / data['Close']
+        data['BuySignal'] = (data['Future_Return'] > 0.02).astype(int)
+        data.dropna(inplace=True)
 
-        try:
-            # Fetch historical data
-            stock = yf.Ticker(symbol)
-            data = stock.history(period="6mo")
-            data = data[['Open', 'High', 'Low', 'Close', 'Volume']]
+        # --- ML Model Training ---
+        features = [col for col in data.columns if col not in ['BuySignal', 'Future_Close', 'Future_Return']]
+        X = data[features]
+        y = data['BuySignal']
+        model = XGBClassifier(n_estimators=100, learning_rate=0.05, max_depth=4, use_label_encoder=False, eval_metric='logloss')
+        weights = compute_sample_weight(class_weight='balanced', y=y)
+        model.fit(X, y, sample_weight=weights)
 
-            # Use only the recent data for analysis
-            recent_data = data.tail(recent_days)
+        # --- Prediction ---
+        latest_features = X.iloc[-1].values.reshape(1, -1)
+        buy_prob = model.predict_proba(latest_features)[0][1]
+        base_signal = int(buy_prob > 0.3)
 
-            # Calculate indicators on the recent data
-            recent_data['EMA_5'] = calculate_ema(recent_data, 5)
-            recent_data['EMA_8'] = calculate_ema(recent_data, 8)
-            recent_data['EMA_13'] = calculate_ema(recent_data, 13)
-            recent_data['RSI'] = calculate_rsi(recent_data)
+        # --- Technical Check Layer ---
+        row = data.iloc[-1]
+        rsi = row['RSI']
+        close = row['Close']
+        ema_fast = row['EMA_5']
+        ema_slow = row['EMA_13']
+        lower_band = row['Lower_Band']
+        indicator_support = []
 
-            print(recent_data)
+        if rsi < 30:
+            indicator_support.append("RSI indicates the stock is oversold")
+        if ema_fast > ema_slow:
+            indicator_support.append("Short-term EMA has crossed above long-term EMA")
+        if close < lower_band:
+            indicator_support.append("Price is below lower Bollinger Band")
 
-            # Generate signals with risk adjustment
-            recent_data = generate_signals(recent_data, risk_level)
+        def adjust_by_risk(base_signal, row, risk):
+            if base_signal == 0:
+                return 0
+            if risk == 'low':
+                return 1 if rsi < 30 and close < lower_band else 0
+            elif risk == 'moderate':
+                return 1 if rsi < 40 or ema_fast > ema_slow else 0
+            elif risk == 'high':
+                return 1 if rsi < 50 or ema_fast > ema_slow else 0
+            return 0
 
-            # Get the latest price and recommendation
-            latest_price = recent_data['Close'].iloc[-1]
-            latest_signal = recent_data['Signal'].iloc[-1]
+        model_signal = adjust_by_risk(base_signal, row, risk_level)
 
-            if latest_signal == 1:
-                recommendation = f"Consider buying {symbol}. Risk Level: {risk_level.capitalize()}."
-            elif latest_signal == -1:
-                recommendation = f"Consider selling your holdings of {symbol}. Risk Level: {risk_level.capitalize()}."
-            else:
-                recommendation = f"No strong Buy/Sell signal detected for {symbol}. Risk Level: {risk_level.capitalize()}."
+        # --- Final Recommendation ---
+        if model_signal == 1:
+            recommendation = f"""
+            ✅ Based on your <strong>{risk_level.capitalize()} risk preference</strong>, the model suggests a <strong>BUY</strong> for {symbol}.
+            <br>🤖 Confidence: {buy_prob*100:.1f}%
+            <br>📊 Supporting indicators:
+            <ul>{"".join([f"<li>{pt}</li>" for pt in indicator_support])}</ul>
+            """
+        else:
+            recommendation = f"""
+            🚫 No Buy Signal for <strong>{symbol}</strong> at the moment.
+            <br>🤖 Model confidence: {buy_prob*100:.1f}%.
+            <br>📊 Indicators do not currently support a buy under <strong>{risk_level}</strong> strategy.
+            """
 
-            # Plot chart using the recent data
-            chart_image = plot_candlestick(recent_data)
+        # --- Interactive Plotly Chart ---
+        trace_price = go.Scatter(x=data.index, y=data['Close'], mode='lines', name='Close Price', line=dict(color='blue'))
+        trace_ema = go.Scatter(x=data.index, y=data['EMA_13'], mode='lines', name='EMA 13', line=dict(dash='dot', color='orange'))
+        trace_buy = go.Scatter(
+            x=data.index[data['BuySignal'] == 1],
+            y=data['Close'][data['BuySignal'] == 1],
+            mode='markers',
+            name='Historical Buy Signal',
+            marker=dict(symbol='triangle-up', size=10, color='green')
+        )
 
-        except Exception as e:
-            error_message = f"An error occurred: {e}"
+        layout = go.Layout(
+            title=f"{symbol} Stock Price & Buy Signals",
+            xaxis_title="Date",
+            yaxis_title="Price (USD)",
+            template="plotly_dark"
+        )
+
+        fig = go.Figure(data=[trace_price, trace_ema, trace_buy], layout=layout)
+        chart_html = fig.to_html(full_html=False)
+
+    except Exception as e:
+        error_message = f"An error occurred while analyzing {symbol}: {str(e)}"
 
     return render(request, 'buy_sell.html', {
-        'chart_image': chart_image,
+        'chart_html': chart_html,
         'error_message': error_message,
         'recommendation': recommendation,
-        'symbol': symbol if 'symbol' in request.GET else '',
-        'shares_owned': shares_owned if 'shares_owned' in request.GET else '',
-        'amount_invested': amount_invested if 'amount_invested' in request.GET else '',
-        'risk_level': risk_level if 'risk_level' in request.GET else 'moderate',
+        'symbol': symbol,
+        'shares_owned': shares_owned,
+        'amount_invested': amount_invested,
+        'risk_level': risk_level,
     })
+
 @login_required(login_url='/accounts/login/')
 def what_if_analysis(request):
     result = None
@@ -371,6 +454,7 @@ def what_if_analysis(request):
             else:
                 # Fetch historical data
                 stock = yf.Ticker(symbol)
+
                 data = stock.history(start=investment_date, end=today)
 
                 if data.empty:
@@ -579,3 +663,26 @@ def get_leaderboard(request):
 @login_required(login_url='/accounts/login/')
 def leaderboard_page(request):
     return render(request, 'leaderboard.html')
+
+from django.views.decorators.http import require_GET
+
+@require_GET
+def api_stock_data(request):
+    symbol = request.GET.get("symbol", "AAPL")
+    period = request.GET.get("period", "1y")
+
+    try:
+        stock = yf.Ticker(symbol)
+        data = stock.history(period=period)
+
+        if data.empty:
+            return JsonResponse({"error": "No data found"}, status=404)
+
+        data.reset_index(inplace=True)
+        data = data[['Date', 'Open', 'High', 'Low', 'Close', 'Volume']]
+        data['Date'] = data['Date'].astype(str)
+
+        return JsonResponse(data.to_dict(orient="records"), safe=False)
+
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)

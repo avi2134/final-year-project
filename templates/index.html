@@ -13,6 +13,11 @@
     {% if user.is_authenticated %}
 
         {% include 'navbar.html' %}
+        {% if user.is_authenticated and not user.has_usable_password %}
+          <div class="alert alert-warning text-center mb-0">
+            ⚠️ You haven't set a password yet. Go to your <a href="{% url 'profile' %}" class="text-decoration-underline text-dark">profile</a> and click <strong>Set Password</strong> to add one.
+          </div>
+        {% endif %}
 
         <div class="container mt-4">
             <h1>Interactive Stock Dashboard</h1>
@@ -22,9 +27,8 @@
             <form method="get" class="mb-4">
                 <div class="row">
                     <!-- Stock Symbol Input -->
-                    <div class="col-md-4">
-                        <input name="symbol" type="text" id="stock-search" class="form-control" placeholder="Search for stocks (e.g., Tesla, Apple, MSFT)" value="{{ stock_symbol }}" required>
-                        <ul id="search-results" class="list-group position-absolute mt-1" style="z-index: 1000;"></ul>
+                    <div class="col-md-4 position-relative stock-search-wrapper">
+                        {% include 'stock_search.html' %}
                     </div>
                     <!-- Time Range Dropdown -->
                     <div class="col-md-4">

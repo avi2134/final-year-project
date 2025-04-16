@@ -1,0 +1,15 @@
+<input
+    name="symbol"
+    type="text"
+    id="stock-search"
+    class="form-control"
+    placeholder="Search for stocks (e.g., Tesla, Apple, MSFT)"
+    value="{{ stock_symbol|default:'' }}"
+    autocomplete="off"
+    required
+/>
+<ul
+    id="search-results"
+    class="list-group position-absolute mt-1 w-100"
+    style="z-index: 1000"
+></ul>

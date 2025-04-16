@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Complete Your Signup{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'style/registration.css' %}">
+{% endblock %}
+
+{% block content %}
+{% include "back_button.html" %}
+
+<div class="container d-flex justify-content-center align-items-center vh-100">
+    <div class="login-container p-4 border border-dark-subtle rounded-1">
+        <h3 class="text-center mb-3">Complete Your Signup</h3>
+
+        {% if form.errors %}
+            <div class="alert alert-danger">
+                {% for field in form %}
+                    {% for error in field.errors %}
+                        <div>{{ error }}</div>
+                    {% endfor %}
+                {% endfor %}
+                {% for error in form.non_field_errors %}
+                    <div>{{ error }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <form method="post" novalidate>
+            {% csrf_token %}
+
+            <div class="mb-3">
+                <label for="id_email" class="form-label">Email</label>
+                <input type="email" name="email" id="id_email"
+                       value="{{ form.email.value|default_if_none:'' }}"
+                       class="form-control" required>
+            </div>
+
+            <div class="mb-3">
+                <label for="id_username" class="form-label">Username</label>
+                <input type="text" name="username" id="id_username"
+                       value="{{ form.username.value|default_if_none:'' }}"
+                       class="form-control" required>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100">Sign Up</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

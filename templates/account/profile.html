@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}My Profile{% endblock %}
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'style/registration.css' %}">
+{% endblock %}
+
+{% block content %}
+{% include "navbar.html" %}
+<div class="container py-5">
+
+    <div class="login-container p-4 rounded-1 text-light align-center" style="max-width: 600px; margin: auto;">
+
+        <h2 class="pb-1">👤 Profile</h2>
+
+        <p><strong>Username:</strong> {{ user.username }}</p>
+        <p><strong>Email:</strong> {{ email.email }}</p>
+        <p><strong>Email Verified:</strong> {{ email.verified }}</p>
+
+        {% if progress %}
+            <hr>
+            <h4>🎮 Quiz Progress</h4>
+            <p><strong>Level:</strong> {{ progress.level.name|capfirst }}</p>
+            <p><strong>Total XP:</strong> {{ progress.get_total_xp }}</p>
+        {% endif %}
+
+        <hr>
+        <h4 class="pb-1">🔐 Account Settings</h4>
+        <p><a href="{% url 'account_change_password' %}" class="btn btn-outline-light btn-sm">Change Password</a></p>
+        <p><a href="{% url 'account_email' %}" class="btn btn-outline-light btn-sm">Manage Emails</a></p>
+
+        {% if social_accounts %}
+            <hr>
+            <h4>🔗 Social Accounts Linked</h4>
+            <ul>
+                {% for account in social_accounts %}
+                    <li>{{ account.provider|capfirst }} ({{ account.uid }})</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+        <button id="themeToggle" class="btn btn-outline-light btn-sm">
+            Switch Theme 🌓
+        </button>
+    </div>
+</div>
+{% endblock %}

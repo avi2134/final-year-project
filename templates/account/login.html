@@ -1,29 +1,10 @@
 {% extends 'base.html' %}
-{% comment %}
-{% extends 'base.html' %}
-
-{% block title %}
-    Login Page
-{% endblock title %}
-
-{% block content %}
-    <h2>Log In</h2>
-    <form method="post">
-      {% csrf_token %}
-      {{ form }}
-      <button type="submit">Log In</button>
-    </form>
-{% endblock %}{% endcomment %}
-
-{#{% extends 'base.html' %}#}
-
-
 {% load static %}
+{% load socialaccount %}
 
 {% block title %}Login{% endblock %}
 
 {% block extra_head %}
-<!-- Link to external CSS -->
 <link rel="stylesheet" href="{% static 'style/registration.css' %}">
 {% endblock %}
 
@@ -38,12 +19,11 @@
             </div>
         {% endif %}
 
-        <form method="post">
+        <form method="post" action="{% url 'account_login' %}">
             {% csrf_token %}
-
             <div class="mb-3 pt-3">
                 <label for="id_username" class="form-label">Username</label>
-                <input type="text" name="username" id="id_username" class="form-control" placeholder="Enter your username" required>
+                <input type="text" name="login" id="id_login" class="form-control" placeholder="Username or Email" required>
             </div>
 
             <div class="mb-3">
@@ -55,10 +35,21 @@
         </form>
 
         <div class="text-center mt-3">
-            <p>Don't have an account? <a href="{% url 'signup' %}" class="text-warning">Sign Up</a></p>
-{#            <p><a href="{% url 'password_reset' %}" class="text-light">Forgot Password?</a></p>#}
+            <p>Don't have an account? <a href="{% url 'account_signup' %}" class="text-warning">Sign Up</a></p>
+        </div>
+
+        <hr class="text-secondary">
+
+        <div class="text-center mt-3">
+            <a href="{% provider_login_url 'google' %}" class="btn btn-outline-light w-100 d-flex align-items-center justify-content-center">
+                <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google icon" width="20" class="me-2">
+                Continue with Google
+            </a>
+            <a href="{% provider_login_url 'github' %}" class="btn btn-outline-light w-100 d-flex align-items-center justify-content-center mt-2">
+                <img src="https://www.svgrepo.com/show/349375/github.svg" alt="GitHub icon" width="20" class="me-2">
+                Continue with GitHub
+            </a>
         </div>
     </div>
 </div>
 {% endblock %}
-
