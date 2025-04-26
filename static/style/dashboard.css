@@ -1,0 +1,55 @@
+#relatedNewsCarousel .carousel-inner {
+  max-height: 100%;
+}
+#relatedNewsCarousel .carousel-item {
+  height: 100%;
+  overflow-y: auto;
+}
+#gainers-losers .list-group-item {
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+/* Ensure all 3 columns stay same height */
+.row.match-height {
+  display: flex;
+  align-items: stretch;
+}
+
+/* Card height consistency */
+.card.h-100 {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Scrollable inner content (use inside a card-body) */
+.scrollable-section {
+  overflow-y: auto;
+  max-height: 400px; /* Or 600px if preferred */
+  padding-right: 5px;
+}
+
+/* Sleek scrollbars */
+.scrollable-section::-webkit-scrollbar {
+  width: 6px;
+}
+.scrollable-section::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.15);
+  border-radius: 4px;
+}
+.scrollable-section::-webkit-scrollbar-track {
+  background: transparent;
+}
+.market-option {
+  cursor: pointer;
+}
+.market-option.active {
+  background-color: black;
+  font-weight: bold;
+}
+#market-summary .list-group-item.active {
+  background-color: transparent !important;
+  border-left: 4px solid #0d6efd !important;
+  font-weight: 600 !important;
+  color: inherit !important;
+}

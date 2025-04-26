@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}InvestGrow - Your Smartest Investment Yet{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.css">
+<link rel="stylesheet" href="{% static 'style/landing.css' %}">
+{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero-section" data-aos="fade-up">
+  <div class="container">
+    <h1 class="display-4 fw-bold">Your Smartest Investment Yet</h1>
+    <p class="lead">Get AI-powered stock insights, level up with gamified learning, and grow your wealth with confidence.</p>
+    <a href="{% url 'account_signup' %}" class="btn btn-lg btn-light mt-4">Join Free</a>
+  </div>
+</section>
+
+<!-- Features Section -->
+<section class="container py-5">
+  <div class="row text-center g-4">
+    <div class="col-md-4" data-aos="fade-up" data-aos-delay="100">
+      <i class="bi bi-bar-chart-line-fill feature-icon text-primary"></i>
+      <h5 class="mt-3">Live Market Trends</h5>
+      <p>Track top gainers, losers, and real-time charts with interactive dashboards.</p>
+    </div>
+    <div class="col-md-4" data-aos="fade-up" data-aos-delay="200">
+      <i class="bi bi-award-fill feature-icon text-success"></i>
+      <h5 class="mt-3">Gamified Quizzes</h5>
+      <p>Level up your skills, earn XP, and dominate the leaderboard as you master investing.</p>
+    </div>
+    <div class="col-md-4" data-aos="fade-up" data-aos-delay="300">
+      <i class="bi bi-lightbulb-fill feature-icon text-warning"></i>
+      <h5 class="mt-3">AI-Driven Signals</h5>
+      <p>Personalised buy/sell insights powered by machine learning to help you stay ahead.</p>
+    </div>
+  </div>
+</section>
+
+<!-- Testimonials -->
+<section class="py-5 bg-dark text-white" data-aos="fade-up">
+  <div class="container text-center">
+    <h2 class="mb-5">What Our Users Say</h2>
+    <div class="row g-4">
+      <div class="col-md-4">
+        <blockquote class="blockquote">
+          <p>“InvestGrow made investing fun and less intimidating. I’ve actually started trading!”</p>
+          <footer class="blockquote-footer text-white-50">Sarah K., Beginner Investor</footer>
+        </blockquote>
+      </div>
+      <div class="col-md-4">
+        <blockquote class="blockquote">
+          <p>“The AI buy/sell signals are spot on. I rely on them every week.”</p>
+          <footer class="blockquote-footer text-white-50">Ravi T., Analyst</footer>
+        </blockquote>
+      </div>
+      <div class="col-md-4">
+        <blockquote class="blockquote">
+          <p>“Gamified quizzes kept me hooked. I actually understand markets now.”</p>
+          <footer class="blockquote-footer text-white-50">James M., College Student</footer>
+        </blockquote>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Call to Action -->
+<section class="cta-section" data-aos="zoom-in">
+  <div class="container">
+    <h2>Join the smarter investing movement 💼📈</h2>
+    <p class="lead mb-4">Thousands of users trust InvestGrow to grow their financial knowledge.</p>
+    <a href="{% url 'account_signup' %}" class="btn btn-primary btn-lg">Create Free Account</a>
+  </div>
+</section>
+
+<section class="container py-5 text-center" data-aos="fade-up">
+  <h2 class="mb-4 fw-bold">Why InvestGrow?</h2>
+  <div class="row justify-content-center g-4">
+    <div class="col-6 col-md-3">
+      <h3><span id="counter-users">0</span>+ Investors Joined</h3>
+    </div>
+    <div class="col-6 col-md-3">
+      <h3><span id="counter-xp">0</span> XP Earned</h3>
+    </div>
+  </div>
+</section>
+
+<footer class="text-center text-muted small py-3">
+  <p class="mb-0">Disclaimer: InvestGrow is an educational platform and a financial assistant. All investment decisions are your responsibility.</p>
+</footer>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js"></script>
+<script src="{% static 'js/landing.js' %}"></script>
+<script>
+  AOS.init({
+    duration: 1000,
+    once: true
+  });
+</script>
+{% endblock %}

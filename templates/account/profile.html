@@ -8,11 +8,9 @@
 
 {% block content %}
 {% include "navbar.html" %}
-<div class="container py-5">
-
-    <div class="login-container p-4 rounded-1 text-light align-center" style="max-width: 600px; margin: auto;">
-
-        <h2 class="pb-1">👤 Profile</h2>
+<div class="d-flex justify-content-center align-items-center" style="min-height: 90vh;">
+    <div class="login-container p-4 rounded-1 text-light" style="max-width: 600px; width: 100%;">
+        <h2 class="pb-1">Profile</h2>
 
         <p><strong>Username:</strong> {{ user.username }}</p>
         <p><strong>Email:</strong> {{ email.email }}</p>
@@ -20,13 +18,13 @@
 
         {% if progress %}
             <hr>
-            <h4>🎮 Quiz Progress</h4>
+            <h4>Quiz Progress</h4>
             <p><strong>Level:</strong> {{ progress.level.name|capfirst }}</p>
             <p><strong>Total XP:</strong> {{ progress.get_total_xp }}</p>
         {% endif %}
 
         <hr>
-        <h4 class="pb-1">🔐 Account Settings</h4>
+        <h4 class="pb-1">Account Settings</h4>
         <p><a href="{% url 'account_change_password' %}" class="btn btn-outline-light btn-sm">Change Password</a></p>
         <p><a href="{% url 'account_email' %}" class="btn btn-outline-light btn-sm">Manage Emails</a></p>
 

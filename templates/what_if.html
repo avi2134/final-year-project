@@ -4,67 +4,149 @@
 {% block title %} What-If Analysis {% endblock %}
 
 {% block extra_head %}
-<!-- Link to external CSS -->
 <link rel="stylesheet" href="{% static 'style/search.css' %}">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script> <!-- Load Plotly -->
 {% endblock %}
 
 {% block content %}
-    {% if user.is_authenticated %}
+{% if user.is_authenticated %}
 
-        {% include 'navbar.html' %}
+    {% include 'navbar.html' %}
 
-        <div class="container mt-4">
-            <h1>What-If Investment Analysis</h1>
-            <p>See how much your investment would be worth today if you had invested on a past date.</p>
+    <div class="container mt-4">
+        <h1>What-If Investment Analysis</h1>
+        <p>See how much your investment would be worth today — or up to 30 days into the future — if you had invested on a specific date.</p>
 
-            <!-- Form for user input -->
-            <form method="get" class="mb-4">
-                <div class="row">
-                    <div class="col-md-3 position-relative stock-search-wrapper">
-                        {% include 'stock_search.html' %}
-                    </div>
-                    <div class="col-md-3">
-                        <input type="date" name="investment_date" class="form-control" value="{{ investment_date }}" required>
-                    </div>
-                    <div class="col-md-3">
-                        <input type="number" step="0.01" name="investment_amount" class="form-control" placeholder="Amount Invested (£)" value="{{ investment_amount }}" required>
-                    </div>
-                    <div class="col-md-3">
-                        <button type="submit" class="btn btn-primary">Analyse</button>
-                    </div>
+        <!-- Form for user input -->
+        <form method="get" class="mb-4" id="analysis-form">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-3 position-relative stock-search-wrapper">
+                    <label for="stock-search" class="form-label">Stock Symbol</label>
+                    {% include 'stock_search.html' %}
                 </div>
-            </form>
-
-            <!-- Display Error Messages -->
-            {% if error_message %}
-                <div class="alert alert-danger">{{ error_message }}</div>
-            {% endif %}
-
-            <!-- Display Results -->
-            {% if result %}
-                <div class="alert alert-info">
-                    <h3>Investment Analysis for {{ result.symbol }}</h3>
-                    <p><strong>Investment Date:</strong> {{ result.investment_date }}</p>
-                    <p><strong>Price on Investment Date:</strong> £{{ result.initial_price }}</p>
-                    <p><strong>Price Today:</strong> £{{ result.final_price }}</p>
-                    <p><strong>Investment Amount:</strong> £{{ result.investment_amount }}</p>
-                    <p><strong>Final Value:</strong> £{{ result.final_value }}</p>
-                    <p><strong>Percentage Change:</strong> {{ result.percentage_change }}%</p>
-                    {% if result.percentage_change > 0 %}
-                        <p class="text-success"><strong>Profit:</strong> You would have gained {{ result.percentage_change }}%.</p>
-                    {% else %}
-                        <p class="text-danger"><strong>Loss:</strong> You would have lost {{ result.percentage_change }}%.</p>
-                    {% endif %}
+                <div class="col-md-3">
+                    <label for="investment-date" class="form-label">Investment Date (Start)</label>
+                    <input type="date" name="investment_date" id="investment-date" class="form-control" value="{{ investment_date }}" required>
                 </div>
+                <div class="col-md-3">
+                    <label for="end-date" class="form-label">End Date</label>
+                    <input type="date" name="end_date" id="end-date" class="form-control" value="{{ end_date }}" required>
+                </div>
+                <div class="col-md-3">
+                    <label for="investment-amount" class="form-label">Amount (£)</label>
+                    <input type="number" step="0.01" name="investment_amount" class="form-control" value="{{ investment_amount }}" required>
+                </div>
+                <div class="col-12 mt-3">
+                    <button type="submit" class="btn btn-primary w-100">Analyse</button>
+                </div>
+            </div>
 
-                <!-- Display Investment Growth Chart -->
-                <h3>Stock Price Growth Since Investment</h3>
-                <img src="data:image/png;base64,{{ chart_image }}" class="img-fluid" alt="Investment Growth Chart">
-            {% endif %}
-        </div>
+            <!-- Spinner and fun facts -->
+            <div id="loading-section" class="mt-4 text-center" style="display: none;">
+                <div class="d-flex flex-column align-items-center justify-content-center mt-4">
+                    <div class="spinner-grow text-secondary" role="status" style="width: 3rem; height: 3rem;"></div>
+                    <span class="status mt-2">Loading...</span>
+                    <p class="mt-3 text-muted text-center">
+                        This might take a few minutes. Feel free to look around, we'll send you an email once it's done!
+                    </p>
+                </div>
+                <p id="finance-fact" class="mt-3 fw-medium"></p>
+            </div>
+        </form>
 
-    {% endif %}
+        {% if error_message %}
+            <div class="alert alert-danger mt-3">{{ error_message }}</div>
+        {% endif %}
 
-    <script src="{% static 'js/search.js' %}"></script>
+        {% if result %}
+            <div class="alert alert-light mt-4">
+                <h3 class="mb-4 text-center">Investment Analysis for {{ result.symbol }}</h3>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-striped text-left">
+                        <tbody>
+                            <tr>
+                                <th>Investment Date</th>
+                                <td>{{ result.investment_date }}</td>
+                            </tr>
+                            <tr>
+                                <th>End Date</th>
+                                <td>{{ result.end_date }}</td>
+                            </tr>
+                            <tr>
+                                <th>Price on Investment Date</th>
+                                <td>£{{ result.initial_price }}</td>
+                            </tr>
+                            <tr>
+                                <th>
+                                    {% if result.end_date > today %}
+                                        Predicted Price on {{ result.end_date }}
+                                    {% else %}
+                                        Price on {{ result.end_date }}
+                                    {% endif %}
+                                </th>
+                                <td>£{{ result.final_price }}</td>
+                            </tr>
+                            <tr>
+                                <th>Investment Amount</th>
+                                <td>£{{ result.investment_amount }}</td>
+                            </tr>
+                            <tr>
+                                <th>Final Value</th>
+                                <td>£{{ result.final_value }}</td>
+                            </tr>
+                            <tr>
+                                <th>Percentage Change</th>
+                                <td>{{ result.percentage_change }}%</td>
+                            </tr>
+                            {% if result.percentage_change > 0 %}
+                            <tr>
+                                <th class="text-success">Profit</th>
+                                <td class="text-success">You would have gained {{ result.percentage_change }}%</td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <th class="text-danger">Loss</th>
+                                <td class="text-danger">You would have lost {{ result.percentage_change }}%</td>
+                            </tr>
+                            {% endif %}
+                            {% if result.model_accuracy %}
+                            <tr>
+                                <th>Model RMSE</th>
+                                <td>{{ result.model_accuracy }}</td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
 
+            <!-- Plotly Chart Div -->
+            <h3 class="mt-4">Stock Price
+                {% if result.end_date > today %}
+                    Forecast
+                {% else %}
+                    Growth Over Period
+                {% endif %}
+            </h3>
+            <div id="investment-chart" style="height: 500px;"></div>
+        {% endif %}
+    </div>
+
+{% endif %}
+
+<footer class="text-center text-muted small py-3">
+    <p class="mb-0">Disclaimer: InvestGrow is an educational platform and a financial assistant. All investment decisions are your responsibility.</p>
+</footer>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/what_if.js' %}"></script>
+<script src="{% static 'js/search.js' %}"></script>
+{% if plotly_json %}
+<script>
+    const graphData = {{ plotly_json|safe }};
+    Plotly.newPlot('investment-chart', graphData.data, graphData.layout);
+</script>
+{% endif %}
 {% endblock %}

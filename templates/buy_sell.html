@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %} Dashboard {% endblock %}
+{% block title %} Buy/Sell Signal Generator {% endblock %}
 
 {% block extra_head %}
 <link rel="stylesheet" href="{% static 'style/search.css' %}">
@@ -22,12 +22,6 @@
                     <div class="col-md-3 position-relative stock-search-wrapper">
                         {% include 'stock_search.html' %}
                     </div>
-                    <div class="col-md-3">
-                        <input type="number" step="0.01" name="shares_owned" class="form-control" placeholder="Shares Owned" value="{{ shares_owned }}">
-                    </div>
-                    <div class="col-md-3">
-                        <input type="number" step="0.01" name="amount_invested" class="form-control" placeholder="Amount Invested (£)" value="{{ amount_invested }}">
-                    </div>
                     <div class="col-md-2">
                         <select name="risk_level" class="form-select">
                             <option value="low" {% if risk_level == 'low' %}selected{% endif %}>Low Risk</option>
@@ -44,7 +38,7 @@
             <!-- Recommendation Output -->
             {% if recommendation %}
                 <div class="alert alert-info">
-                    <strong>📈 Recommendation:</strong>
+                    <strong>Recommendation</strong>
                     <div style="margin-top: 8px;">{{ recommendation|safe }}</div>
                 </div>
             {% endif %}
@@ -56,14 +50,27 @@
 
             <!-- Interactive Chart -->
             {% if chart_html %}
-                <h4 class="mt-4">Interactive Buy Signal Chart</h4>
+                <h4 class="mt-4">Interactive Signal Chart</h4>
                 <div>
                     {{ chart_html|safe }}
                 </div>
             {% endif %}
+
+            <div style="margin-top: 20px; font-size: 0.95rem;">
+              <strong>How to Read the Chart:</strong>
+              <ul>
+                <li><strong>Green Triangles</strong> = Confirmed BUY signal (model prediction + low RSI)</li>
+                <li><strong>Red Triangles</strong> = Confirmed SELL signal (model prediction + high RSI)</li>
+                <li><strong>White Line</strong> = Daily closing price</li>
+              </ul>
+            </div>
         </div>
 
     {% endif %}
+
+    <footer class="text-center text-muted small py-3">
+      <p class="mb-0">Disclaimer: InvestGrow is an educational platform and a financial assistant. All investment decisions are your responsibility.</p>
+    </footer>
 
     <script src="{% static 'js/search.js' %}"></script>
 

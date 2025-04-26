@@ -9,11 +9,12 @@
     box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
     border-radius: 0.375rem;
     background-color: #fff;
+    cursor: pointer !important;
 }
 
 .stock-search-wrapper #search-results .result-item {
     padding: 0.5rem 1rem;
-    cursor: pointer;
+    cursor: pointer !important;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -21,7 +22,16 @@
 
 .stock-search-wrapper #search-results .result-item:hover,
 .stock-search-wrapper #search-results .result-item.active {
-    background-color: lightslategray;
+    background-color: #3d6a7f; !important;
+    border-color: #3d6a7f !important;
+    cursor: pointer;
+}
+
+.list-group-item.active {
+    background-color: #3d6a7f; !important;
+    border-color: #3d6a7f !important;
+    cursor: pointer !important;
+    overflow-y: auto;
 }
 
 .stock-search-wrapper #search-results.d-none {

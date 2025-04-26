@@ -1,128 +1,348 @@
 {% extends 'base.html' %}
-
 {% load static %}
 
 {% block title %} Dashboard {% endblock %}
 
 {% block extra_head %}
-<!-- Link to external CSS -->
+<link rel="stylesheet" href="{% static 'style/dashboard.css' %}">
 <link rel="stylesheet" href="{% static 'style/search.css' %}">
 {% endblock %}
 
 {% block content %}
-    {% if user.is_authenticated %}
+{% if user.is_authenticated %}
+  {% include 'navbar.html' %}
 
-        {% include 'navbar.html' %}
-        {% if user.is_authenticated and not user.has_usable_password %}
-          <div class="alert alert-warning text-center mb-0">
-            ⚠️ You haven't set a password yet. Go to your <a href="{% url 'profile' %}" class="text-decoration-underline text-dark">profile</a> and click <strong>Set Password</strong> to add one.
-          </div>
-        {% endif %}
+  {% if user.is_authenticated and not user.has_usable_password %}
+    <div class="alert alert-warning alert-dismissible mb-0">
+      ⚠️ You haven't set a password yet. Go to your <a href="{% url 'profile' %}" class="text-decoration-underline text-dark">profile</a> and click <strong>Change Password</strong>.
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+  {% endif %}
 
-        <div class="container mt-4">
-            <h1>Interactive Stock Dashboard</h1>
-            <p>Select a stock symbol and time range to visualise its closing prices.</p>
+  <div class="container-fluid mt-4 px-4">
+    <h1 class="mb-2">Interactive Stock Dashboard</h1>
+    <p>Select a stock symbol and time range to visualise its closing prices.</p>
 
-            <!-- Form for user input -->
-            <form method="get" class="mb-4">
-                <div class="row">
-                    <!-- Stock Symbol Input -->
-                    <div class="col-md-4 position-relative stock-search-wrapper">
-                        {% include 'stock_search.html' %}
-                    </div>
-                    <!-- Time Range Dropdown -->
-                    <div class="col-md-4">
-                        <select name="time_range" class="form-select">
-                            <option value="daily" {% if time_range == "Daily" %}selected{% endif %}>Daily</option>
-                            <option value="weekly" {% if time_range == "Weekly" %}selected{% endif %}>Weekly</option>
-                            <option value="monthly" {% if time_range == "Monthly" %}selected{% endif %}>Monthly</option>
-                        </select>
-                    </div>
-
-                    <!-- Submit Button -->
-                    <div class="col-md-4">
-                        <button type="submit" class="btn btn-primary">View Chart</button>
-                    </div>
-                </div>
-            </form>
-
-            <!-- Display the Chart -->
-            {% if chart_html %}
-                <h3>{{ stock_symbol }} - {{ time_range }} Closing Prices</h3>
-                <div>{{ chart_html|safe }}</div>
-            {% else %}
-                <div class="alert alert-danger">{{ error_message }}</div>
-            {% endif %}
-
-            <!-- Add Legend or Tips -->
-            <div class="mt-4">
-                <h5>Understanding the Chart</h5>
-                <ul>
-                    <li><strong>Daily:</strong> Shows daily closing prices for the last 30 days.</li>
-                    <li><strong>Weekly:</strong> Aggregates closing prices by week.</li>
-                    <li><strong>Monthly:</strong> Aggregates closing prices by month.</li>
-                </ul>
-            </div>
-
-            <!-- News & Trending Stocks Section -->
-            <div class="row mt-5">
-                <!-- Latest Financial News -->
-                <div class="col-md-6">
-                    <h3 class="mb-3">Latest Financial News</h3>
-
-                    <!-- News Search Bar -->
-                    <div class="input-group mb-3">
-                        <input type="text" id="news-search" class="form-control" placeholder="Enter company or keyword...">
-                        <button class="btn btn-primary" id="search-news-btn">Search</button>
-                    </div>
-
-                    <!-- News List -->
-                    <ul class="list-group" id="news-list">
-                        <li class="list-group-item">Loading news...</li>
-                    </ul>
-                </div>
-                <!-- Trending Stocks -->
-                <div class="col-md-6">
-                    <h3 class="mb-3">Trending Stocks</h3>
-                    <ul class="list-group" id="trending-stocks">
-                        <li class="list-group-item">Fetching data...</li>
-                    </ul>
-                </div>
-            </div>
-
-            </div>
-
-            <!-- Learning Resources -->
-            <div class="mt-5">
-                <h3 class="text-center">Investment & Trading Resources</h3>
-                <div class="row">
-                    <div class="col-md-4">
-                        <div class="card p-3 shadow">
-                            <h5>Stock Market Basics</h5>
-                            <p>Learn how the stock market works and key investment principles.</p>
-                            <a href="https://www.fool.com/investing/stock-market/basics/?msockid=01418347f6d26b2a0619978df7d46a84" class="btn btn-sm btn-primary" target="_blank">Read More</a>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="card p-3 shadow">
-                            <h5>Investment Strategies</h5>
-                            <p>Explore different strategies like value investing, growth investing, and ETFs.</p>
-                            <a href="https://www.investopedia.com/terms/i/investmentstrategy.asp" class="btn btn-sm btn-primary" target="_blank">Read More</a>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="card p-3 shadow">
-                            <h5>Technical Analysis</h5>
-                            <p>Understand how to analyse stock charts, trends, and indicators.</p>
-                            <a href="https://www.investopedia.com/terms/t/technicalanalysis.asp" class="btn btn-sm btn-primary" target="_blank">Read More</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
+    <!-- Form -->
+    <form method="get" class="mb-4">
+      <div class="row g-2">
+        <div class="col-md-4 position-relative stock-search-wrapper">
+          {% include 'stock_search.html' %}
         </div>
-    {% endif %}
+        <div class="col-md-4">
+          <select name="time_range" class="form-select">
+            <option value="daily" {% if time_range == "Daily" %}selected{% endif %}>Daily</option>
+            <option value="weekly" {% if time_range == "Weekly" %}selected{% endif %}>Weekly</option>
+            <option value="monthly" {% if time_range == "Monthly" %}selected{% endif %}>Monthly</option>
+          </select>
+        </div>
+        <div class="col-md-4">
+          <button type="submit" class="btn btn-primary w-100">View Relevant Info</button>
+        </div>
+      </div>
+    </form>
 
-    <script src="{% static 'js/dashboard.js' %}"></script>
-    <script src="{% static 'js/search.js' %}"></script>
+    <!-- Chart + Fundamentals/News -->
+    <h3 class="mb-3">{{ stock_symbol }} - {{ time_range }} Closing Prices</h3>
+    <div class="row gx-3" style="min-height: 550px;">
+      <!-- Chart -->
+      <div class="col-lg-8 d-flex flex-column">
+        <div class="h-100">
+          {% if chart_html %}
+            <div class="h-100">{{ chart_html|safe }}</div>
+          {% else %}
+            <div class="alert alert-danger">{{ error_message }}</div>
+          {% endif %}
+        </div>
+      </div>
 
+      <!-- Side Panel -->
+      <div class="col-lg-4 d-flex flex-column justify-content-between h-100">
+        <!-- Fundamentals -->
+        <div class="card shadow-sm mb-3">
+          <div class="card-body">
+            <h5 class="card-title">Company Fundamentals</h5>
+            {% if fundamentals %}
+              <ul class="list-group list-group-flush">
+                <li class="list-group-item">📊 Market Cap: {{ fundamentals.market_cap }}</li>
+                <li class="list-group-item">💸 P/E Ratio: {{ fundamentals.pe_ratio }}</li>
+                <li class="list-group-item">📈 EPS: {{ fundamentals.eps }}</li>
+                <li class="list-group-item">💰 Dividend Yield: {{ fundamentals.dividend_yield }}</li>
+                <li class="list-group-item">🏭 Sector: {{ fundamentals.sector }}</li>
+                <li class="list-group-item">🌍 Country: {{ fundamentals.country }}</li>
+              </ul>
+            {% else %}
+              <p>No fundamental data available.</p>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Related News Carousel -->
+        <div class="card shadow-sm flex-grow-1 d-flex flex-column">
+          <div class="card-body d-flex flex-column p-3">
+            <h5 class="card-title">Related News</h5>
+            <div id="relatedNewsCarousel" class="carousel slide h-100" data-bs-ride="carousel">
+              <div class="carousel-inner h-100" id="related-news-carousel">
+                <div class="carousel-item active">
+                  <div class="d-flex align-items-center justify-content-center h-100">
+                    <p class="text-muted">Loading news...</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+    </div>
+
+    <div class="card mt-4 shadow-sm border-0">
+      <div class="card-body">
+        <h5 class="card-title">📌 Stocks I'm Watching</h5>
+        <div class="d-flex justify-content-between align-items-center mt-3 mb-3">
+          <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addWatchModal">
+            ➕ Add Stock
+          </button>
+        </div>
+        <div class="modal fade" id="addWatchModal" tabindex="-1" aria-labelledby="addWatchModalLabel" aria-hidden="true">
+          <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+              <form id="watchlist-form" method="post">
+                <div class="modal-header">
+                  <h5 class="modal-title" id="addWatchModalLabel">Add Stock to Watchlist</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                  {% csrf_token %}
+                  <div class="mb-3">
+                      <label for="symbolInput" class="form-label">Stock Symbol</label>
+                      {% include 'stock_search.html' with s_context="modal" %}
+                  </div>
+                  <div id="watchlist-message" class="text-danger small"></div>
+                </div>
+                <div class="modal-footer">
+                  <button type="submit" class="btn btn-primary">Add</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+        {% if watched_stocks %}
+          <div class="table-responsive">
+              <table class="table table-sm table-hover align-middle">
+                <thead>
+                  <tr>
+                    <th style="width: 10%;">Symbol</th>
+                    <th style="width: 30%;">Name</th>
+                    <th style="width: 10%;">Price</th>
+                    <th style="width: 15%;">Change</th>
+                    <th style="width: 20%;">Market Cap</th>
+                    <th style="width: 10%;">P/E</th>
+                    <th style="width: 5%;">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for stock in watched_stocks %}
+                    <tr class="watch-row {% if forloop.counter > 5 %}d-none extra-row{% endif %}" id="stock-{{ stock.symbol }}" data-symbol="{{ stock.symbol }}">
+                      <td><strong>{{ stock.symbol }}</strong></td>
+                      <td>{{ stock.name }}</td>
+                      <td>${{ stock.price }}</td>
+                      <td class="{% if stock.change < 0 %}text-danger{% else %}text-success{% endif %}">
+                        {{ stock.change|floatformat:2 }} ({{ stock.percent|floatformat:2 }}%)
+                      </td>
+                      <td>{{ stock.market_cap|floatformat:"0" }}</td>
+                      <td>{{ stock.pe_ratio }}</td>
+                      <td><button onclick="deleteWatchedStock('{{ stock.symbol }}')" class="btn btn-sm btn-outline-danger">Remove</button></td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+              <div class="text-center mt-2">
+                <button id="toggle-watchlist-btn" class="btn btn-sm"><i class="bi bi-chevron-double-down"></i> Show More</button>
+              </div>
+            </div>
+            <!-- Delete Confirmation Modal -->
+            <div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmLabel" aria-hidden="true">
+              <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h5 class="modal-title text-danger" id="deleteConfirmLabel">Remove Stock</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                  </div>
+                  <div class="modal-body">
+                    Are you sure you want to remove <strong id="stockToDeleteName"></strong> from your watchlist?
+                  </div>
+                  <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button id="confirmDeleteBtn" type="button" class="btn btn-danger">Remove</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+        {% else %}
+          <p class="text-muted">You're not watching any stocks yet.</p>
+        {% endif %}
+      </div>
+    </div>
+
+        <div class="card mt-4 shadow-sm border-0">
+          <div class="card-body">
+            <h5 class="card-title">
+              Suggested Stocks
+            </h5>
+
+            <!-- Suggested Stocks Table -->
+            <div id="suggested-stocks-table" class="table-responsive {% if not suggested_stocks %}d-none{% endif %}">
+              <table class="table table-sm table-hover align-middle">
+                <thead>
+                  <tr>
+                    <th style="width: 10%;">Symbol</th>
+                    <th style="width: 30%;">Name</th>
+                    <th style="width: 10%;">Price</th>
+                    <th style="width: 15%;">Change</th>
+                    <th style="width: 20%;">Market Cap</th>
+                    <th style="width: 10%;">P/E</th>
+                    <th style="width: 5%;">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="suggested-stocks-body">
+                  {% for stock in suggested_stocks %}
+                  <tr id="suggested-{{ stock.symbol }}">
+                    <td><strong>{{ stock.symbol }}</strong></td>
+                    <td>{{ stock.name }}</td>
+                    <td>${{ stock.price }}</td>
+                    <td class="{% if stock.change < 0 %}text-danger{% else %}text-success{% endif %}">
+                      {{ stock.change|floatformat:2 }} ({{ stock.percent|floatformat:2 }}%)
+                    </td>
+                    <td>{{ stock.market_cap|floatformat:"0" }}</td>
+                    <td>{{ stock.pe_ratio }}</td>
+                    <td>
+                      <button onclick="confirmAddSuggestedStock('{{ stock.symbol }}')" class="btn btn-sm btn-outline-success">
+                        Add
+                      </button>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+
+            <!-- No Suggestions Message -->
+            <div id="no-suggestions-message" class="text-center mt-4 mb-4 {% if suggested_stocks %}d-none{% endif %}">
+              <p class="text-muted mb-2">No suggestions for now.</p>
+              <a href="https://finance.yahoo.com/sectors/" class="btn btn-outline-primary btn-sm" target="_blank" rel="noopener noreferrer">
+                Explore more sectors for other stocks and suggestions!
+              </a>
+            </div>
+
+          </div>
+        </div>
+
+    <!-- Add Confirmation Modal -->
+    <div class="modal fade" id="addConfirmModal" tabindex="-1" aria-labelledby="addConfirmLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title text-success" id="addConfirmLabel">Add Stock</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            Are you sure you want to add <strong id="stockToAddName"></strong> to your watchlist?
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button id="confirmAddBtn" type="button" class="btn btn-success">Add</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    <div class="row d-flex align-items-stretch mt-5">
+      <!-- Column 1: Financial News -->
+      <div class="col-md-4 d-flex">
+        <div class="card flex-fill border-0">
+          <div class="card-body d-flex flex-column">
+            <h3 class="mb-3">Latest Financial News</h3>
+            <ul class="list-group flex-grow-1 overflow-auto scrollable-section" id="news-list">
+              <li class="list-group-item">Loading news...</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Column 2: Market Summary -->
+      <div class="col-md-4 d-flex">
+        <div class="card flex-fill border-0">
+          <div class="card-body">
+            <h3 class="mb-3">Market Summary</h3>
+            <ul class="list-group" id="market-summary">
+              <li class="list-group-item">Loading market data...</li>
+            </ul>
+            <!-- Sparkline container -->
+            <div class="mt-4">
+              <canvas id="market-sparkline" height="60"></canvas>
+              <h6 id="sparkline-title" class="text-center text-muted mt-4 mb-1">5-Day Price Trend</h6>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Column 3: Gainers & Losers -->
+      <div class="col-md-4 d-flex">
+        <div class="card flex-fill border-0">
+          <div class="card-body d-flex flex-column">
+            <h3 class="mb-3">Top Gainers & Losers</h3>
+            <ul class="list-group flex-grow-1 overflow-auto scrollable-section" id="gainers-losers">
+              <li class="list-group-item">Loading gainers/losers...</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Learning Resources -->
+    <div class="mt-5 mb-5">
+      <h3 class="text-center">Investment & Trading Resources</h3>
+      <div class="row">
+        <div class="col-md-4">
+          <div class="card p-3 shadow">
+            <h5>Stock Market Basics</h5>
+            <p>Learn how the stock market works and key investment principles.</p>
+            <a href="https://www.fool.com/investing/stock-market/basics/" class="btn btn-sm btn-primary" target="_blank">Read More</a>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="card p-3 shadow">
+            <h5>Investment Strategies</h5>
+            <p>Explore value investing, growth investing, ETFs, and more.</p>
+            <a href="https://www.investopedia.com/terms/i/investmentstrategy.asp" class="btn btn-sm btn-primary" target="_blank">Read More</a>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="card p-3 shadow">
+            <h5>Technical Analysis</h5>
+            <p>Understand stock charts, indicators, and trend analysis.</p>
+            <a href="https://www.investopedia.com/terms/t/technicalanalysis.asp" class="btn btn-sm btn-primary" target="_blank">Read More</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+    <!-- Toast Container -->
+    <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 9999">
+      <div id="successToast" class="toast align-items-center text-bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+          <div class="toast-body">
+            Successfully added to your watchlist!
+          </div>
+          <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+      </div>
+    </div>
+
+  <!-- JS -->
+  <script src="{% static 'js/dashboard.js' %}"></script>
+  <script src="{% static 'js/search.js' %}"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endif %}
 {% endblock %}

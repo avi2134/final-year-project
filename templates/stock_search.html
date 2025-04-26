@@ -1,15 +1,19 @@
-<input
-    name="symbol"
-    type="text"
-    id="stock-search"
-    class="form-control"
-    placeholder="Search for stocks (e.g., Tesla, Apple, MSFT)"
-    value="{{ stock_symbol|default:'' }}"
-    autocomplete="off"
-    required
-/>
-<ul
-    id="search-results"
-    class="list-group position-absolute mt-1 w-100"
-    style="z-index: 1000"
-></ul>
+{% load static %}
+<link rel="stylesheet" href="{% static 'style/search.css' %}">
+<div class="stock-search-wrapper" data-context="{{ s_context|default:'main' }}">
+  <input
+      name="symbol"
+      type="text"
+      id="stock-search-{{ s_context|default:'main' }}"
+      class="form-control"
+      placeholder="Search for stocks (e.g., Tesla, Apple, MSFT)"
+      value="{{ stock_symbol|default:'' }}"
+      autocomplete="off"
+      required
+  />
+  <ul
+      id="search-results-{{ s_context|default:'main' }}"
+      class="list-group position-absolute mt-1 w-100 d-none"
+      style="z-index: 1000"
+  ></ul>
+</div>

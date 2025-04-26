@@ -76,14 +76,58 @@ document.addEventListener("DOMContentLoaded", function () {
             // Calculate XP percentage out of 50
             let xpPercentage = (data.xp_gained / 50) * 100;
 
-            // Update and show progress bar
+            // Show animated modal XP bar
             showXPProgress(xpPercentage);
 
-            // Show the modal
+            // Show modal
             let modal = new bootstrap.Modal(document.getElementById('exampleModal'));
             modal.show();
 
-            updateXPBar(); // Update main XP bar
+            // Update current quiz card XP
+            if (currentQuiz && data.xp_gained !== undefined) {
+                let quizXpElement = document.getElementById(`quiz-xp-${currentQuiz}`);
+                if (quizXpElement) {
+                    quizXpElement.textContent = `XP: ${data.xp_gained} / 50`;
+                }
+            }
+
+            // Update XP bar and level
+            fetch('/api/get-user-progress/')
+                .then(response => response.json())
+                .then(progress => {
+                    let xp = progress.xp_points;
+                    let xpNeeded = progress.xp_needed;
+                    let maxXP = 800;
+                    let xpBarWidth = (xp / maxXP) * 100;
+                    let levelIndicator = (xpNeeded / maxXP) * 100;
+
+                    xpBar.style.width = `${xpBarWidth}%`;
+                    xpPoints.innerText = `${xp} XP / ${xpNeeded} XP to Level Up`;
+                    document.getElementById("quiz-level").innerText = progress.level;
+
+                    xpNeededLabel.innerHTML = `<div style="position:absolute; left:${levelIndicator}%; top: -10px; font-size: 14px;">⬆️ ${xpNeeded} XP</div>`;
+
+                    if (xp >= xpNeeded) {
+                        nextLevelButton.style.display = "block";
+                        alertMessage.style.display = "block";
+                    } else {
+                        nextLevelButton.style.display = "none";
+                        alertMessage.style.display = "none";
+                    }
+
+                    // Update all quiz cards to reflect latest XP
+                    let xpScores = progress.quiz_xp || {};
+                    for (let i = 1; i <= 4; i++) {
+                        let el = document.getElementById(`quiz-xp-${i}`);
+                        if (el) {
+                            el.textContent = `XP: ${xpScores[i] || 0} / 50`;
+                        }
+                    }
+                });
+        })
+        .catch(error => {
+            console.error("Error submitting quiz answers:", error);
+            alert("Something went wrong submitting your quiz. Please try again.");
         });
     });
 

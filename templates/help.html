@@ -1,0 +1,421 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Help & FAQ{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'style/help.css' %}">
+{% endblock %}
+
+{% block content %}
+{% include 'navbar.html' %}
+<div class="accordion m-4" id="faqAccordion">
+
+  <!-- Search Bar -->
+    <div class="mb-4">
+      <input type="text" id="faqSearch" class="form-control" placeholder="Search FAQs...">
+    </div>
+
+  <!-- Technical Help Section -->
+  <h3 class="mt-4 section-title">Technical Help</h3>
+
+  <div class="accordion-item">
+    <h2 class="accordion-header" id="headingLogin">
+      <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseLogin">
+        I can’t log in or sign up
+      </button>
+    </h2>
+    <div id="collapseLogin" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+      <div class="accordion-body">
+        Double-check your email and password. If you've forgotten your password, use the Reset Password link on the login page. Also, ensure your browser allows cookies.
+      </div>
+    </div>
+  </div>
+
+  <div class="accordion-item">
+    <h2 class="accordion-header" id="headingEmail">
+      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseEmail">
+        My email isn’t verified
+      </button>
+    </h2>
+    <div id="collapseEmail" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+      <div class="accordion-body">
+        We send a verification link to your registered email. Check your inbox and spam folder. Still nothing? Head to your Profile page to resend the verification email.
+      </div>
+    </div>
+  </div>
+
+  <div class="accordion-item">
+    <h2 class="accordion-header" id="headingWatchlist">
+      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseWatchlist">
+        Watchlist not saving
+      </button>
+    </h2>
+    <div id="collapseWatchlist" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+      <div class="accordion-body">
+        Watchlist items are saved only when you're logged in. If you’re not signed in, your added stocks won’t persist.
+      </div>
+    </div>
+  </div>
+
+  <div class="accordion-item">
+    <h2 class="accordion-header" id="headingXP">
+      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseXP">
+        Quiz XP isn’t updating
+      </button>
+    </h2>
+    <div id="collapseXP" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+      <div class="accordion-body">
+        XP is recorded after each quiz, but your leaderboard score only updates once you’ve completed all 4 quizzes in your current level.
+      </div>
+    </div>
+  </div>
+
+  <div class="accordion-item">
+    <h2 class="accordion-header" id="headingCharts">
+      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCharts">
+        Charts aren’t loading
+      </button>
+    </h2>
+    <div id="collapseCharts" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+      <div class="accordion-body">
+        Try refreshing the page. Sometimes, browser extensions or slow networks block our chart scripts. Disable ad blockers or try another browser if needed.
+      </div>
+    </div>
+  </div>
+
+  <div class="accordion-item">
+    <h2 class="accordion-header" id="headingData">
+      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseData">
+        Data seems outdated
+      </button>
+    </h2>
+    <div id="collapseData" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+      <div class="accordion-body">
+        To make the app faster, we cache market data from Yahoo Finance. This means it's refreshed every few hours — not live to the second.
+      </div>
+    </div>
+  </div>
+
+  <!-- Investment Questions Section -->
+  <h3 class="mt-4 section-title">Investment Questions</h3>
+
+  <div class="accordion-item">
+    <h2 class="accordion-header" id="headingLevels">
+      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseLevels">
+        What are XP and Levels?
+      </button>
+    </h2>
+    <div id="collapseLevels" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+      <div class="accordion-body">
+        XP (Experience Points) are earned by completing quizzes. Your level shows how far you've progressed:
+        <ul>
+          <li>Beginner</li>
+          <li>Intermediate</li>
+          <li>Advanced</li>
+          <li>Expert</li>
+        </ul>
+        Each level contains 4 quizzes. Completing them unlocks the next.
+      </div>
+    </div>
+  </div>
+
+  <div class="accordion-item">
+    <h2 class="accordion-header" id="headingDashboard">
+      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDashboard">
+        What’s on the Dashboard?
+      </button>
+    </h2>
+    <div id="collapseDashboard" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+      <div class="accordion-body">
+        Your dashboard gives you:
+        <ul>
+          <li>Real-time stock charts</li>
+          <li>Trending stocks</li>
+          <li>Your personal watchlist</li>
+          <li>Key stock fundamentals</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="accordion-item">
+    <h2 class="accordion-header" id="headingLeaderboard">
+      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseLeaderboard">
+        How does the Leaderboard work?
+      </button>
+    </h2>
+    <div id="collapseLeaderboard" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+      <div class="accordion-body">
+        We rank the top users by total XP. If two users have the same XP, the one who reached it first ranks higher.
+      </div>
+    </div>
+  </div>
+
+  <div class="accordion-item">
+    <h2 class="accordion-header" id="headingWhatIf">
+      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseWhatIf">
+        What is the What-If Analysis?
+      </button>
+    </h2>
+    <div id="collapseWhatIf" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+      <div class="accordion-body">
+        Pick any stock and a past date. Enter how much you’d have invested, and we’ll calculate what it’d be worth today — with a handy graph.
+      </div>
+    </div>
+  </div>
+
+  <div class="accordion-item">
+    <h2 class="accordion-header" id="headingNews">
+      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseNews">
+        Where do you get your news?
+      </button>
+    </h2>
+    <div id="collapseNews" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+      <div class="accordion-body">
+        We use NewsAPI to fetch the latest business and stock news — filtered by relevance and keywords.
+      </div>
+    </div>
+  </div>
+
+  <div class="accordion-item">
+    <h2 class="accordion-header" id="headingMarket">
+      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseMarket">
+        How often is market data updated?
+      </button>
+    </h2>
+    <div id="collapseMarket" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+      <div class="accordion-body">
+        Top gainers/losers, trending stocks, and market summaries refresh every few hours using Yahoo Finance data.
+      </div>
+    </div>
+  </div>
+
+  <div class="accordion-item">
+    <h2 class="accordion-header" id="headingSignals">
+      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSignals">
+        Can I trust the AI buy/sell signals?
+      </button>
+    </h2>
+    <div id="collapseSignals" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+      <div class="accordion-body">
+        Our predictions are generated by real-world indicators and machine learning, but nothing is guaranteed. We suggest using these insights as a guide — always do your own research!
+      </div>
+    </div>
+  </div>
+
+  <!-- Technical Indicators Section -->
+  <h3 class="mt-4 section-title">Technical Indicators</h3>
+
+  <div class="accordion-item">
+    <h2 class="accordion-header" id="headingRSI">
+      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseRSI">
+        RSI (Relative Strength Index)
+      </button>
+    </h2>
+    <div id="collapseRSI" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+      <div class="accordion-body">
+        Shows if a stock is overbought or oversold.<br>
+        Below 30 = Might be cheap (oversold)<br>
+        Above 70 = Might be expensive (overbought)
+      </div>
+    </div>
+  </div>
+
+  <div class="accordion-item">
+    <h2 class="accordion-header" id="headingEMA">
+      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseEMA">
+        EMA (Exponential Moving Average)
+      </button>
+    </h2>
+    <div id="collapseEMA" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+      <div class="accordion-body">
+        A smoother line that shows the stock's trend by giving more weight to recent prices.<br>
+        We often use EMA 5, 8, 13, 20, 50, and 200.
+      </div>
+    </div>
+  </div>
+
+  <div class="accordion-item">
+    <h2 class="accordion-header" id="headingMACD">
+      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseMACD">
+        MACD (Moving Average Convergence Divergence)
+      </button>
+    </h2>
+    <div id="collapseMACD" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+      <div class="accordion-body">
+        Helps identify when a trend is starting or ending.<br>
+        When MACD crosses its “signal line”, it might be time to buy or sell.
+      </div>
+    </div>
+  </div>
+
+  <div class="accordion-item">
+    <h2 class="accordion-header" id="headingBollinger">
+      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseBollinger">
+        Bollinger Bands
+      </button>
+    </h2>
+    <div id="collapseBollinger" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+      <div class="accordion-body">
+        These draw an envelope around the stock price to show volatility.<br>
+        If price touches the lower band, it might bounce back.<br>
+        If it touches the upper, it may drop.
+      </div>
+    </div>
+  </div>
+
+  <div class="accordion-item">
+    <h2 class="accordion-header" id="headingVolatility">
+      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseVolatility">
+        Volatility
+      </button>
+    </h2>
+    <div id="collapseVolatility" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+      <div class="accordion-body">
+        Shows how risky a stock is.<br>
+        Higher volatility = more price swings = higher risk/reward.
+      </div>
+    </div>
+  </div>
+
+  <div class="accordion-item">
+    <h2 class="accordion-header" id="headingVolume">
+      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseVolume">
+        Volume
+      </button>
+    </h2>
+    <div id="collapseVolume" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+      <div class="accordion-body">
+        How many shares are being traded. A sudden spike might indicate news or a shift in trend.
+      </div>
+    </div>
+  </div>
+
+  <!-- Stock Fundamentals Section -->
+  <h3 class="mt-4 section-title">Stock Fundamentals</h3>
+
+  <div class="accordion-item">
+    <h2 class="accordion-header" id="headingMarketCap">
+      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseMarketCap">
+        Market Capitalisation (Market Cap)
+      </button>
+    </h2>
+    <div id="collapseMarketCap" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+      <div class="accordion-body">
+        Total value of the company on the stock market.<br>
+        Small Cap = Risky but potential to grow.<br>
+        Large Cap = More stable but slower growth.
+      </div>
+    </div>
+  </div>
+
+  <div class="accordion-item">
+    <h2 class="accordion-header" id="headingPE">
+      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapsePE">
+        Price-to-Earnings Ratio (P/E)
+      </button>
+    </h2>
+    <div id="collapsePE" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+      <div class="accordion-body">
+        Tells us how expensive a stock is relative to its earnings.<br>
+        A high P/E might mean investors expect big growth.<br>
+        A low P/E might mean the stock is undervalued — or risky.
+      </div>
+    </div>
+  </div>
+
+  <div class="accordion-item">
+    <h2 class="accordion-header" id="headingEPS">
+      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseEPS">
+        Earnings Per Share (EPS)
+      </button>
+    </h2>
+    <div id="collapseEPS" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+      <div class="accordion-body">
+        Company profit divided by shares.<br>
+        Higher EPS = more profit per share.
+      </div>
+    </div>
+  </div>
+
+  <div class="accordion-item">
+    <h2 class="accordion-header" id="headingDividend">
+      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDividend">
+        Dividend Yield
+      </button>
+    </h2>
+    <div id="collapseDividend" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+      <div class="accordion-body">
+        How much a company pays you back as a percentage of its stock price.<br>
+        Useful for income-focused investors.
+      </div>
+    </div>
+  </div>
+
+  <div class="accordion-item">
+    <h2 class="accordion-header" id="headingSector">
+      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSector">
+        Sector
+      </button>
+    </h2>
+    <div id="collapseSector" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+      <div class="accordion-body">
+        The industry the company belongs to — tech, finance, healthcare, etc.<br>
+        Good to compare a stock’s performance with others in the same sector.
+      </div>
+    </div>
+  </div>
+
+  <div class="accordion-item">
+    <h2 class="accordion-header" id="headingCountry">
+      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCountry">
+        Country
+      </button>
+    </h2>
+    <div id="collapseCountry" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+      <div class="accordion-body">
+        Some stocks are global. Knowing where a company is based helps assess risks like politics, economy, and regulations.
+      </div>
+    </div>
+  </div>
+
+  <div class="card mt-4">
+      <div class="card-header">
+        Still need help?
+      </div>
+      <div class="card-body">
+        <h6 class="card-title">Contact us directly via our email: <a href="mailto:investgrowteam00@gmail.com">investgrowteam00@gmail.com</a>.</h6>
+      </div>
+  </div>
+</div>
+
+<script>
+  document.getElementById('faqSearch').addEventListener('keyup', function () {
+    const query = this.value.toLowerCase();
+    const items = document.querySelectorAll('#faqAccordion .accordion-item');
+    const sections = document.querySelectorAll('.section-title');
+
+    let visibleSections = new Set();
+
+    items.forEach(item => {
+      const header = item.querySelector('.accordion-button').textContent.toLowerCase();
+      const body = item.querySelector('.accordion-body')?.textContent.toLowerCase() || '';
+      const match = header.includes(query) || body.includes(query);
+      item.style.display = match ? '' : 'none';
+
+      if (match) {
+        let parentSection = item.previousElementSibling;
+        while (parentSection && !parentSection.classList.contains('section-title')) {
+          parentSection = parentSection.previousElementSibling;
+        }
+        if (parentSection) visibleSections.add(parentSection);
+      }
+    });
+
+    sections.forEach(section => {
+      section.style.display = visibleSections.has(section) ? '' : 'none';
+    });
+  });
+</script>
+{% endblock %}

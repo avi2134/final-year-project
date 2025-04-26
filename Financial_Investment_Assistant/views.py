@@ -1,6 +1,11 @@
+import os
 from lib2to3.fixes.fix_input import context
+import random
+import joblib
+import matplotlib
+import plotly
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.forms import UserCreationForm, logger
 from django.http import JsonResponse
 from django.urls import reverse_lazy
 from django.views.decorators.csrf import csrf_exempt
@@ -8,6 +13,9 @@ from django.views.generic import CreateView
 from django.shortcuts import render, redirect
 from django.contrib.auth import login
 from django.urls import reverse
+from keras.src.saving import load_model
+from plotly.subplots import make_subplots
+from sklearn.metrics import r2_score, mean_squared_error
 from verify_email.email_handler import send_verification_email
 from .forms import CustomUserCreationForm
 import requests
@@ -21,16 +29,48 @@ import base64
 import datetime
 from django.shortcuts import get_object_or_404
 from .models import *
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, TimeSeriesSplit
 from sklearn.utils.class_weight import compute_sample_weight
-from xgboost import XGBClassifier
+from xgboost import XGBClassifier, XGBRegressor
 import plotly.graph_objs as go
 import numpy as np
 from django.shortcuts import redirect, render
 from allauth.socialaccount.models import SocialAccount
 from allauth.account.models import EmailAddress
 from .models import UserQuizProgress
+from django.views.decorators.http import require_GET, require_POST
+from .models import WatchedStock
+import json
+from django.views.decorators.http import require_GET
+from django.core.cache import cache
+import datetime
+import base64
+from io import BytesIO
+import numpy as np
+import pandas as pd
+import yfinance as yf
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import MinMaxScaler
+from keras.models import Sequential
+from keras.layers import LSTM, Dense
+from keras.callbacks import EarlyStopping
+matplotlib.use('Agg')
 
+CACHE_DIR = "cache"
+
+def landing_page(request):
+    return render(request, 'landing.html')
+
+def help_page(request):
+    return render(request, "help.html")
+
+def stats_api(request):
+    total_users = User.objects.count()
+    total_xp = UserQuizProgress.objects.aggregate(total_xp_sum=models.Sum('total_xp'))['total_xp_sum'] or 0
+    return JsonResponse({
+        "users": total_users,
+        "total_xp": total_xp,
+    })
 @login_required(login_url='/accounts/login/')
 def profile_view(request):
     user = request.user
@@ -51,6 +91,11 @@ def fetch_stock_search(request):
     if not query:
         return JsonResponse({"error": "No search query provided"}, status=400)
 
+    cache_key = f"stock_search_{query.lower()}"
+    cached_result = cache.get(cache_key)
+    if cached_result:
+        return JsonResponse({"bestMatches": cached_result})
+
     # Yahoo Finance autocomplete API
     url = f"https://query2.finance.yahoo.com/v1/finance/search?q={query}"
 
@@ -69,75 +114,289 @@ def fetch_stock_search(request):
                 "type": stock.get("quoteType", "Unknown")
             })
 
+        cache.set(cache_key, results, timeout=60 * 60 * 6)
         return JsonResponse({"bestMatches": results})
 
     except Exception as e:
         return JsonResponse({"error": f"Failed to fetch data: {str(e)}"}, status=500)
 
-def fetch_stock_data(symbol, time_range):
-    api_key = 'E4AV7OCP8Y7L5D36'
-    url = "https://www.alphavantage.co/query"
-    time_function = {
-        'daily': 'TIME_SERIES_DAILY',
-        'weekly': 'TIME_SERIES_WEEKLY',
-        'monthly': 'TIME_SERIES_MONTHLY'
-    }.get(time_range, 'TIME_SERIES_DAILY')  # Default to daily
+def get_fundamentals(symbol):
+    cache_key = f"fundamentals_{symbol.upper()}_{datetime.date.today()}"
+    cached_data = cache.get(cache_key)
+    if cached_data:
+        return cached_data
 
-    params = {
-        'function': time_function,
-        'symbol': symbol,
-        'apikey': api_key,
+    try:
+        stock = yf.Ticker(symbol)
+        info = stock.info
+
+        fundamentals = {
+            "market_cap": f"${info.get('marketCap', 'N/A'):,}",
+            "pe_ratio": info.get("trailingPE", "N/A"),
+            "eps": info.get("trailingEps", "N/A"),
+            "dividend_yield": f"{round(info.get('dividendYield', 0) * 100, 2)}%" if info.get("dividendYield") else "N/A",
+            "sector": info.get("sector", "N/A"),
+            "country": info.get("country", "N/A"),
+        }
+
+        cache.set(cache_key, fundamentals, timeout=60 * 60 * 12)
+        return fundamentals
+
+    except Exception as e:
+        print("Error fetching fundamentals:", e)
+        return None
+
+def fetch_gainers_losers(request):
+    cache_key = f"gainers_losers_{datetime.date.today()}"
+    cached_result = cache.get(cache_key)
+    if cached_result:
+        return JsonResponse(cached_result)
+
+    try:
+        headers = {"User-Agent": "Mozilla/5.0"}
+
+        gainers_res = requests.get(
+            "https://query1.finance.yahoo.com/v1/finance/screener/predefined/saved?scrIds=day_gainers&count=5",
+            headers=headers
+        )
+        losers_res = requests.get(
+            "https://query1.finance.yahoo.com/v1/finance/screener/predefined/saved?scrIds=day_losers&count=5",
+            headers=headers
+        )
+
+        gainers_data = gainers_res.json()
+        losers_data = losers_res.json()
+
+        result = {
+            "gainers": gainers_data["finance"]["result"][0].get("quotes", []),
+            "losers": losers_data["finance"]["result"][0].get("quotes", [])
+        }
+
+        cache.set(cache_key, result, timeout=60 * 60 * 6)
+        return JsonResponse(result)
+
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
+
+@require_GET
+def fetch_market_summary(request):
+    indices = {
+        "^GSPC": "S&P 500",
+        "^IXIC": "Nasdaq",
+        "^DJI": "Dow Jones",
+        "^RUT": "Russell 2000",
+        "^VIX": "VIX",
+        "^N225": "Nikkei 225",
     }
-    response = requests.get(url, params=params)
 
-    data = response.json()
+    summary = []
 
-    if time_range == 'daily':
-        return data.get('Time Series (Daily)', {})
-    elif time_range == 'weekly':
-        return data.get('Weekly Time Series', {})
-    elif time_range == 'monthly':
-        return data.get('Monthly Time Series', {})
-    return {}
+    cache_key = f"market_summary_{datetime.date.today()}"
+    cached_data = cache.get(cache_key)
+    if cached_data:
+        return JsonResponse({"summary": cached_data})
+
+    try:
+        for symbol, name in indices.items():
+            ticker = yf.Ticker(symbol)
+            info = ticker.info
+            current = info.get("regularMarketPrice")
+            previous = info.get("previousClose")
+
+            if current is not None and previous is not None:
+                change = current - previous
+                percent_change = (change / previous) * 100 if previous else 0
+
+                summary.append({
+                    "name": name,
+                    "price": round(current, 2),
+                    "change": round(change, 2),
+                    "percent_change": round(percent_change, 2),
+                    "is_up": change >= 0
+                })
+
+        cache.set(cache_key, summary, timeout=60 * 60 * 4)
+        return JsonResponse({"summary": summary})
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
+
+@require_GET
+def fetch_market_chart_data(request):
+    symbol = request.GET.get("symbol")
+
+    if not symbol:
+        return JsonResponse({"error": "Missing symbol"}, status=400)
+
+    cache_key = f"market_chart_{symbol.upper()}_{datetime.date.today()}"
+    cached_data = cache.get(cache_key)
+    if cached_data:
+        return JsonResponse(cached_data)
+
+    try:
+        ticker = yf.Ticker(symbol)
+        hist = ticker.history(period="5d", interval="1d")
+
+        if hist.empty:
+            return JsonResponse({"error": "No data available"}, status=404)
+
+        closing_prices = hist["Close"].tolist()
+        result = {"symbol": symbol, "prices": closing_prices}
+
+        cache.set(cache_key, result, timeout=60 * 60 * 6)
+        return JsonResponse(result)
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
+
+@require_POST
+@csrf_exempt
+@login_required
+def add_to_watchlist(request):
+    try:
+        data = json.loads(request.body)
+        symbol = data.get("symbol", "").upper()
+
+        if not symbol:
+            return JsonResponse({"error": "Symbol is required"}, status=400)
+
+        # Check if already exists
+        exists = WatchedStock.objects.filter(user=request.user, symbol=symbol).exists()
+        if exists:
+            return JsonResponse({"error": f"{symbol} is already in your watchlist."}, status=400)
+
+        WatchedStock.objects.create(user=request.user, symbol=symbol)
+        return JsonResponse({"success": True})
+
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
+
+@csrf_exempt
+@require_POST
+@login_required
+def delete_stock(request):
+    symbol = request.POST.get("symbol")
+
+    if not symbol:
+        return JsonResponse({"success": False, "error": "No symbol provided."})
+
+    try:
+        stock = WatchedStock.objects.get(symbol=symbol.upper(), user=request.user)
+        stock.delete()
+        return JsonResponse({"success": True})
+    except WatchedStock.DoesNotExist:
+        return JsonResponse({"success": False, "error": "Stock not found."})
 @login_required(login_url='/accounts/login/')
 def index(request):
     stock_symbol = request.GET.get('symbol', 'AAPL')
-    time_range = request.GET.get('time_range', 'daily').capitalize()
+    time_range = request.GET.get('time_range', 'daily').lower()
 
-    stock_data = fetch_stock_data(stock_symbol, time_range.lower())
     chart_html = None
     error_message = None
+    fundamentals = get_fundamentals(stock_symbol)
 
-    if stock_data:
-        # Prepare the data
-        dates = list(stock_data.keys())[:30]
-        close_prices = [float(stock_data[date]['4. close']) for date in dates]
+    # Mapping time_range to yfinance parameters
+    period_interval_map = {
+        'daily': ('1mo', '1d'),
+        'weekly': ('3mo', '1wk'),
+        'monthly': ('1y', '1mo')
+    }
+    period, interval = period_interval_map.get(time_range, ('1mo', '1d'))
 
-        # Create a Plotly chart
-        trace = go.Scatter(
-            x=dates[::-1],
-            y=close_prices[::-1],
-            mode='lines+markers',
-            name=f'{stock_symbol} Closing Prices',
-            line=dict(color='blue')
-        )
-        layout = go.Layout(
-            title=f"{stock_symbol} - {time_range} Closing Prices",
-            xaxis=dict(title="Date"),
-            yaxis=dict(title="Price (USD)"),
-            template="plotly_dark",
-            showlegend=True  # Add legend
-        )
-        fig = go.Figure(data=[trace], layout=layout)
-        chart_html = fig.to_html(full_html=False)
-    else:
-        error_message = f"No data available for '{stock_symbol}'. Please check the symbol or time range."
+    try:
+        ticker = yf.Ticker(stock_symbol)
+        hist = ticker.history(period=period, interval=interval)
+
+        if not hist.empty:
+            close_prices = hist["Close"].tail(30)
+            dates = close_prices.index.strftime('%Y-%m-%d')
+
+            trace = go.Scatter(
+                x=dates,
+                y=close_prices.values,
+                mode='lines+markers',
+                name=f'{stock_symbol} Closing Prices',
+                line=dict(color='blue')
+            )
+
+            layout = go.Layout(
+                title=f"{stock_symbol} - {time_range.capitalize()} Closing Prices",
+                xaxis=dict(title="Date"),
+                yaxis=dict(title="Price (USD)"),
+                template="plotly_dark",
+                showlegend=False
+            )
+
+            fig = go.Figure(data=[trace], layout=layout)
+            chart_html = fig.to_html(full_html=False)
+        else:
+            error_message = f"No data available for '{stock_symbol}'."
+    except Exception as e:
+        error_message = f"Error fetching data for '{stock_symbol}': {str(e)}"
+
+    # Watchlist
+    watchlist = WatchedStock.objects.filter(user=request.user)
+    watched_stocks_data = []
+
+    for item in watchlist:
+        try:
+            ticker = yf.Ticker(item.symbol)
+            info = ticker.info
+            watched_stocks_data.append({
+                "symbol": item.symbol,
+                "name": info.get("shortName"),
+                "price": info.get("regularMarketPrice"),
+                "change": info.get("regularMarketChange"),
+                "percent": info.get("regularMarketChangePercent"),
+                "market_cap": info.get("marketCap"),
+                "pe_ratio": info.get("trailingPE"),
+            })
+        except:
+            continue
+
+    sector_stocks = {
+        "Technology": ["AAPL", "MSFT", "GOOGL", "META", "AMD", "NVDA"],
+        "Healthcare": ["JNJ", "PFE", "MRK", "ABBV", "UNH"],
+        "Financial Services": ["JPM", "BAC", "WFC", "GS", "MS"],
+        "Consumer Cyclical": ["AMZN", "TSLA", "HD", "NKE", "MCD", "F"],
+        "Energy": ["XOM", "CVX", "COP", "SLB", "EOG"],
+        "Industrials": ["BA", "GE", "CAT", "UPS", "MMM"],
+        "Consumer Defensive": ["PG", "KO", "PEP", "WMT", "COST"],
+        "Communication Services": ["NFLX", "DIS", "T", "VZ", "CHTR"],
+        "Basic Materials": ["LIN", "SHW", "NEM", "FCX", "DD"],
+        "Utilities": ["NEE", "DUK", "SO", "AEP", "EXC"],
+        "Real Estate": ["PLD", "AMT", "CCI", "EQIX", "SPG"],
+    }
+
+    # Suggested Stocks
+    suggested_stocks = []
+    if fundamentals:
+        sector = fundamentals.get('sector')
+        if sector and sector in sector_stocks:
+            symbols_to_suggest = sector_stocks[sector]
+            for sym in symbols_to_suggest:
+                if not WatchedStock.objects.filter(user=request.user, symbol=sym).exists():
+                    try:
+                        tick = yf.Ticker(sym)
+                        info = tick.info
+                        suggested_stocks.append({
+                            "symbol": sym,
+                            "name": info.get("shortName"),
+                            "price": info.get("regularMarketPrice"),
+                            "change": info.get("regularMarketChange"),
+                            "percent": info.get("regularMarketChangePercent"),
+                            "market_cap": info.get("marketCap"),
+                            "pe_ratio": info.get("trailingPE"),
+                        })
+                    except:
+                        continue
 
     return render(request, 'index.html', {
         'chart_html': chart_html,
         'stock_symbol': stock_symbol,
-        'time_range': time_range,  # Already capitalised
-        'error_message': error_message
+        'time_range': time_range,
+        'error_message': error_message,
+        'fundamentals': fundamentals,
+        'watched_stocks': watched_stocks_data,
+        'suggested_stocks': suggested_stocks,
     })
 
 def fetch_news(request):
@@ -162,8 +421,12 @@ def fetch_news(request):
 
     return JsonResponse({"articles": articles})
 
-# Fetch Trending Stocks from Yahoo Finance
 def fetch_trending_stocks(request):
+    cache_key = f"trending_stocks_{datetime.date.today()}"
+    cached_data = cache.get(cache_key)
+    if cached_data:
+        return JsonResponse({"trending": cached_data})
+
     try:
         # Fetch trending stock symbols from Yahoo Finance API
         url = "https://query1.finance.yahoo.com/v1/finance/trending/US"
@@ -191,7 +454,7 @@ def fetch_trending_stocks(request):
                     "symbol": symbol,
                     "price": latest_price
                 })
-
+            cache.set(cache_key, trending_stocks[:14], timeout=60 * 60 * 3)
             return JsonResponse({"trending": trending_stocks[:14]})
 
         return JsonResponse({"error": "Unexpected API structure"}, status=500)
@@ -312,200 +575,410 @@ def plot_candlestick(data):
     buffer.close()
     return chart_image
 
-# Buy/Sell page view
 @login_required(login_url='/accounts/login/')
 def buy_sell(request):
     symbol = request.GET.get('symbol', 'AAPL')
     risk_level = request.GET.get('risk_level', 'moderate').strip()
-    shares_owned = request.GET.get('shares_owned', '').strip()
-    amount_invested = request.GET.get('amount_invested', '').strip()
-    recommendation = None
-    chart_html = None
-    error_message = None
+
+    recommendation = chart_html = error_message = model_metrics = None
+    feature_importance = []
+    current_rsi = current_volatility = price_ema_ratio = predicted_return = confidence = None
 
     try:
         stock = yf.Ticker(symbol)
-        data = stock.history(period="1y")
+        data = stock.history(period="3y")
         data = data[['Open', 'High', 'Low', 'Close', 'Volume']]
 
-        # --- Feature Engineering ---
-        data['EMA_5'] = calculate_ema(data, 5)
-        data['EMA_8'] = calculate_ema(data, 8)
-        data['EMA_13'] = calculate_ema(data, 13)
-        data['EMA_26'] = calculate_ema(data, 26)
+        # Feature Engineering
+        data['Returns'] = data['Close'].pct_change()
+        data['Volatility'] = data['Close'].rolling(20).std()
+        data['Log_Returns'] = np.log(data['Close'] / data['Close'].shift(1))
+
+        for window in [5, 12, 20, 26, 50]:
+            data[f'SMA_{window}'] = data['Close'].rolling(window).mean()
+            data[f'EMA_{window}'] = data['Close'].ewm(span=window, adjust=False).mean()
+
+        def calculate_rsi(data, period=14):
+            delta = data['Close'].diff()
+            gain = delta.clip(lower=0)
+            loss = -delta.clip(upper=0)
+            avg_gain = gain.rolling(window=period).mean()
+            avg_loss = loss.rolling(window=period).mean()
+            rs = avg_gain / avg_loss
+            rsi = 100 - (100 / (1 + rs))
+            return rsi
+
         data['RSI'] = calculate_rsi(data)
-        data['SMA_20'] = data['Close'].rolling(20).mean()
-        data['STD_20'] = data['Close'].rolling(20).std()
-        data['Upper_Band'] = data['SMA_20'] + 2 * data['STD_20']
-        data['Lower_Band'] = data['SMA_20'] - 2 * data['STD_20']
-        data['Future_Close'] = data['Close'].shift(-5)
-        data['Future_Return'] = (data['Future_Close'] - data['Close']) / data['Close']
-        data['BuySignal'] = (data['Future_Return'] > 0.02).astype(int)
+        data['MACD'] = data['EMA_12'] - data['EMA_26']
+        data['MACD_Signal'] = data['MACD'].ewm(span=9, adjust=False).mean()
+        data['Volume_MA'] = data['Volume'].rolling(5).mean()
+        data['Volume_Change'] = data['Volume'].pct_change()
+        data['Upper_Band'] = data['SMA_20'] + 2 * data['Close'].rolling(20).std()
+        data['Lower_Band'] = data['SMA_20'] - 2 * data['Close'].rolling(20).std()
+        data['Future_Return'] = data['Close'].shift(-5) / data['Close'] - 1
         data.dropna(inplace=True)
 
-        # --- ML Model Training ---
-        features = [col for col in data.columns if col not in ['BuySignal', 'Future_Close', 'Future_Return']]
+        features = ['Returns', 'Volatility', 'Log_Returns', 'RSI', 'MACD',
+                    'Volume_MA', 'Volume_Change', 'SMA_5', 'SMA_20', 'SMA_50',
+                    'EMA_5', 'EMA_20', 'EMA_50', 'Upper_Band', 'Lower_Band']
         X = data[features]
-        y = data['BuySignal']
-        model = XGBClassifier(n_estimators=100, learning_rate=0.05, max_depth=4, use_label_encoder=False, eval_metric='logloss')
-        weights = compute_sample_weight(class_weight='balanced', y=y)
-        model.fit(X, y, sample_weight=weights)
+        y = data['Future_Return']
 
-        # --- Prediction ---
-        latest_features = X.iloc[-1].values.reshape(1, -1)
-        buy_prob = model.predict_proba(latest_features)[0][1]
-        base_signal = int(buy_prob > 0.3)
+        tscv = TimeSeriesSplit(n_splits=5)
+        r2_scores = []
 
-        # --- Technical Check Layer ---
-        row = data.iloc[-1]
-        rsi = row['RSI']
-        close = row['Close']
-        ema_fast = row['EMA_5']
-        ema_slow = row['EMA_13']
-        lower_band = row['Lower_Band']
-        indicator_support = []
+        for train_index, test_index in tscv.split(X):
+            X_train, X_test = X.iloc[train_index], X.iloc[test_index]
+            y_train, y_test = y.iloc[train_index], y.iloc[test_index]
+            split_idx = int(len(X_train) * 0.8)
+            X_tr, X_val = X_train.iloc[:split_idx], X_train.iloc[split_idx:]
+            y_tr, y_val = y_train.iloc[:split_idx], y_train.iloc[split_idx:]
 
-        if rsi < 30:
-            indicator_support.append("RSI indicates the stock is oversold")
-        if ema_fast > ema_slow:
-            indicator_support.append("Short-term EMA has crossed above long-term EMA")
-        if close < lower_band:
-            indicator_support.append("Price is below lower Bollinger Band")
+            model = XGBRegressor(
+                n_estimators=500,
+                learning_rate=0.01,
+                max_depth=3,
+                subsample=0.8,
+                colsample_bytree=0.8,
+                objective='reg:squarederror',
+                n_jobs=-1,
+                early_stopping_rounds=50
+            )
 
-        def adjust_by_risk(base_signal, row, risk):
-            if base_signal == 0:
-                return 0
-            if risk == 'low':
-                return 1 if rsi < 30 and close < lower_band else 0
-            elif risk == 'moderate':
-                return 1 if rsi < 40 or ema_fast > ema_slow else 0
-            elif risk == 'high':
-                return 1 if rsi < 50 or ema_fast > ema_slow else 0
-            return 0
+            model.fit(X_tr, y_tr, eval_set=[(X_val, y_val)], verbose=False)
+            preds = model.predict(X_test)
+            r2_scores.append(r2_score(y_test, preds))
 
-        model_signal = adjust_by_risk(base_signal, row, risk_level)
+        avg_r2 = np.mean(r2_scores)
+        model_metrics = f"Cross-validated R²: {min(r2_scores):.2f}-{max(r2_scores):.2f} (Avg: {avg_r2:.2f})"
 
-        # --- Final Recommendation ---
-        if model_signal == 1:
+        final_model = XGBRegressor(
+            n_estimators=int(model.best_iteration * 1.1) if hasattr(model, 'best_iteration') else 200,
+            learning_rate=0.01,
+            max_depth=3,
+            objective='reg:squarederror'
+        )
+        final_model.fit(X, y)
+
+        latest_features = X.iloc[-1:]
+        predicted_return = final_model.predict(latest_features)[0]
+
+        current_rsi = data['RSI'].iloc[-1]
+        current_volatility = data['Volatility'].iloc[-1]
+        price_ema_ratio = data['Close'].iloc[-1] / data['EMA_50'].iloc[-1]
+
+        risk_params = {
+            'low': {'threshold': 0.015, 'rsi_max': 30},
+            'moderate': {'threshold': 0.01, 'rsi_max': 40},
+            'high': {'threshold': 0.005, 'rsi_max': 50}
+        }
+        params = risk_params.get(risk_level, risk_params['moderate'])
+        volatility_adjustment = np.clip(current_volatility * 10, 0.5, 2)
+        final_threshold = params['threshold'] * volatility_adjustment
+
+        buy_signal = (predicted_return > final_threshold) and (current_rsi < params['rsi_max'])
+        sell_signal = (predicted_return < -final_threshold) and (current_rsi > 70)
+
+        confidence = 0
+        if buy_signal:
+            confidence = int(100 / (1 + np.exp(-10 * (predicted_return - final_threshold))))
+        elif sell_signal:
+            confidence = int(100 / (1 + np.exp(-10 * (-predicted_return - final_threshold))))
+
+        if buy_signal:
             recommendation = f"""
-            ✅ Based on your <strong>{risk_level.capitalize()} risk preference</strong>, the model suggests a <strong>BUY</strong> for {symbol}.
-            <br>🤖 Confidence: {buy_prob*100:.1f}%
-            <br>📊 Supporting indicators:
-            <ul>{"".join([f"<li>{pt}</li>" for pt in indicator_support])}</ul>
+            <strong>Recommendation: BUY {symbol}</strong> (Risk: {risk_level.capitalize()})<br>
+            <strong>Predicted 5-day return:</strong> {predicted_return * 100:.2f}%<br>
+            <strong>Buy threshold:</strong> {final_threshold * 100:.2f}%<br>
+            <strong>Why?</strong>
+            <ul>
+                <li><strong>RSI:</strong> {current_rsi:.1f} — oversold zone</li>
+                <li><strong>Volatility:</strong> {current_volatility:.2f} — acceptable risk</li>
+                <li><strong>Price/EMA50:</strong> {price_ema_ratio:.2f} — price is near average</li>
+                <li><strong>Model Confidence:</strong> {confidence:.1f}%</li>
+            </ul>
+            """
+        elif sell_signal:
+            recommendation = f"""
+            🔻 <strong>Recommendation: SELL {symbol}</strong> (Risk: {risk_level.capitalize()})<br>
+            📉 <strong>Predicted 5-day return:</strong> {predicted_return * 100:.2f}%<br>
+            🎯 <strong>Sell threshold:</strong> {-final_threshold * 100:.2f}%<br>
+            🧠 <strong>Why?</strong>
+            <ul>
+                <li><strong>RSI:</strong> {current_rsi:.1f} — overbought zone</li>
+                <li><strong>Volatility:</strong> {current_volatility:.2f} — potential trend reversal</li>
+                <li><strong>Price/EMA50:</strong> {price_ema_ratio:.2f} — above fair value</li>
+                <li><strong>Model Confidence:</strong> {confidence:.1f}%</li>
+            </ul>
             """
         else:
             recommendation = f"""
-            🚫 No Buy Signal for <strong>{symbol}</strong> at the moment.
-            <br>🤖 Model confidence: {buy_prob*100:.1f}%.
-            <br>📊 Indicators do not currently support a buy under <strong>{risk_level}</strong> strategy.
+            🤔 <strong>Recommendation: HOLD {symbol}</strong> (Risk: {risk_level.capitalize()})<br>
+            📊 <strong>Predicted 5-day return:</strong> {predicted_return * 100:.2f}%<br>
+            🧠 <strong>Why?</strong>
+            <ul>
+                <li>Indicators do not show a strong buy or sell signal</li>
+                <li>RSI: {current_rsi:.1f}</li>
+                <li>Volatility: {current_volatility:.2f}</li>
+                <li>Model Confidence: {confidence:.1f}%</li>
+            </ul>
             """
 
-        # --- Interactive Plotly Chart ---
-        trace_price = go.Scatter(x=data.index, y=data['Close'], mode='lines', name='Close Price', line=dict(color='blue'))
-        trace_ema = go.Scatter(x=data.index, y=data['EMA_13'], mode='lines', name='EMA 13', line=dict(dash='dot', color='orange'))
-        trace_buy = go.Scatter(
-            x=data.index[data['BuySignal'] == 1],
-            y=data['Close'][data['BuySignal'] == 1],
+        # === Simple Chart (Price + Buy Signals Only) ===
+        predicted_returns = final_model.predict(X)
+        buy_zones = (predicted_returns > final_threshold) & (data['RSI'] < params['rsi_max'])
+        buy_dates = data.index[buy_zones]
+
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=data.index, y=data['Close'], name='Price', line=dict(color='white')))
+        fig.add_trace(go.Scatter(
+            x=buy_dates,
+            y=data.loc[buy_dates, 'Close'],
             mode='markers',
-            name='Historical Buy Signal',
-            marker=dict(symbol='triangle-up', size=10, color='green')
-        )
+            name='Buy Signal',
+            marker=dict(color='green', size=8, symbol='triangle-up')
+        ))
 
-        layout = go.Layout(
-            title=f"{symbol} Stock Price & Buy Signals",
-            xaxis_title="Date",
-            yaxis_title="Price (USD)",
-            template="plotly_dark"
+        fig.update_layout(
+            title=f"{symbol} Price Chart (Buy Signals Highlighted)",
+            template='plotly_dark',
+            xaxis_title='Date',
+            yaxis_title='Price (USD)',
+            hovermode='x unified'
         )
-
-        fig = go.Figure(data=[trace_price, trace_ema, trace_buy], layout=layout)
         chart_html = fig.to_html(full_html=False)
 
     except Exception as e:
-        error_message = f"An error occurred while analyzing {symbol}: {str(e)}"
+        error_message = f"Error analyzing {symbol}: {str(e)}"
+        logger.error(f"Error in buy_sell: {error_message}", exc_info=True)
 
     return render(request, 'buy_sell.html', {
         'chart_html': chart_html,
         'error_message': error_message,
         'recommendation': recommendation,
+        'model_metrics': model_metrics,
         'symbol': symbol,
-        'shares_owned': shares_owned,
-        'amount_invested': amount_invested,
         'risk_level': risk_level,
+        'feature_importance': feature_importance,
+        'current_rsi': current_rsi,
+        'current_volatility': current_volatility,
+        'price_ema_ratio': price_ema_ratio,
+        'predicted_return': predicted_return,
+        'confidence': confidence,
     })
+
+import tensorflow as tf
+# Set random seed for reproducibility
+def set_seed(seed=42):
+    random.seed(seed)
+    np.random.seed(seed)
+    tf.random.set_seed(seed)
+
+# Create LSTM sequences
+def create_sequences(data, seq_len=60):
+    X, y = [], []
+    for i in range(seq_len, len(data)):
+        X.append(data[i-seq_len:i])
+        y.append(data[i])
+    return np.array(X), np.array(y)
+
+# Predict future prices
+def predict_future_prices(model, data, n_days, seq_len, scaler):
+    last_sequence = data[-seq_len:]
+    future_predictions = []
+    for _ in range(n_days):
+        input_seq = last_sequence.reshape(1, seq_len, 1)
+        next_price = model.predict(input_seq, verbose=0)[0][0]
+        future_predictions.append(next_price)
+        last_sequence = np.append(last_sequence[1:], [[next_price]], axis=0)
+    return scaler.inverse_transform(np.array(future_predictions).reshape(-1, 1))
+
+# Build model dynamically based on volatility
+def build_model(volatility_category):
+    model = Sequential()
+
+    if volatility_category == "low":
+        # For low volatility stocks like MSFT, AAPL
+        model.add(LSTM(64, return_sequences=True, input_shape=(60, 1)))
+        model.add(LSTM(64, return_sequences=True))
+        model.add(LSTM(32))
+    elif volatility_category == "high":
+        # For very volatile stocks like TSLA, NVDA
+        model.add(LSTM(50, input_shape=(60, 1)))
+    else:
+        # Medium volatility - normal configuration
+        model.add(LSTM(50, return_sequences=True, input_shape=(60, 1)))
+        model.add(LSTM(50))
+
+    model.add(Dense(1))
+    model.compile(optimizer='adam', loss='mean_squared_error')
+    return model
 
 @login_required(login_url='/accounts/login/')
 def what_if_analysis(request):
     result = None
-    chart_image = None
+    plotly_json = None
     error_message = None
 
     if request.method == 'GET' and 'symbol' in request.GET:
         symbol = request.GET.get('symbol').strip().upper()
-        investment_date = request.GET.get('investment_date')
         investment_amount = request.GET.get('investment_amount')
+        investment_date_str = request.GET.get('investment_date')
+        end_date_str = request.GET.get('end_date')
 
         try:
-            investment_date = datetime.datetime.strptime(investment_date, "%Y-%m-%d").date()
+            investment_amount = float(investment_amount)
             today = datetime.date.today()
+            investment_date = datetime.datetime.strptime(investment_date_str, "%Y-%m-%d").date()
+            end_date = datetime.datetime.strptime(end_date_str, "%Y-%m-%d").date()
 
-            if investment_date >= today:
-                error_message = "Investment date must be in the past."
-            else:
-                # Fetch historical data
+            set_seed()
+
+            if investment_date > today:
+                error_message = "Investment date cannot be in the future."
+            elif end_date < investment_date:
+                error_message = "End date must be after or equal to the investment date."
+            elif end_date > today + datetime.timedelta(days=30):
+                error_message = "End date must be within 30 days from today."
+
+            elif end_date <= today:
+                # --- Historical Analysis ---
                 stock = yf.Ticker(symbol)
-
-                data = stock.history(start=investment_date, end=today)
+                data = stock.history(start=investment_date, end=end_date)
 
                 if data.empty:
-                    error_message = f"No data found for {symbol} on {investment_date}."
+                    error_message = f"No data found for {symbol} between {investment_date} and {end_date}."
                 else:
-                    # Get price on investment date
-                    initial_price = data.iloc[0]['Close']
-                    # Get price today
-                    final_price = data.iloc[-1]['Close']
-                    # Calculate final investment value
-                    final_value = (float(investment_amount) / initial_price) * final_price
-                    percentage_change = ((final_value - float(investment_amount)) / float(investment_amount)) * 100
+                    initial_price = float(data.iloc[0]['Close'])
+                    final_price = float(data.iloc[-1]['Close'])
+                    final_value = (investment_amount / initial_price) * final_price
+                    percentage_change = ((final_value - investment_amount) / investment_amount) * 100
 
                     result = {
                         'symbol': symbol,
                         'investment_date': investment_date,
+                        'end_date': end_date,
                         'initial_price': round(initial_price, 2),
                         'final_price': round(final_price, 2),
-                        'investment_amount': round(float(investment_amount), 2),
+                        'investment_amount': round(investment_amount, 2),
                         'final_value': round(final_value, 2),
                         'percentage_change': round(percentage_change, 2),
+                        'model_accuracy': None,
                     }
 
-                    # Generate graph of stock price over time
-                    plt.figure(figsize=(10, 5))
-                    plt.plot(data.index, data['Close'], label=f"{symbol} Stock Price", color='blue')
-                    plt.scatter(data.index[0], initial_price, color='green', label=f'Investment Date (£{initial_price})', zorder=3)
-                    plt.scatter(data.index[-1], final_price, color='red', label=f'Today (£{final_price})', zorder=3)
-                    plt.xlabel("Date")
-                    plt.ylabel("Stock Price (£)")
-                    plt.title(f"{symbol} Stock Growth Since {investment_date}")
-                    plt.legend()
-                    plt.grid()
+                    fig = go.Figure()
+                    fig.add_trace(go.Scatter(x=data.index, y=data['Close'], mode='lines', name=f"{symbol} Price"))
+                    fig.update_layout(title=f"{symbol} Price from {investment_date} to {end_date}",
+                                      xaxis_title="Date", yaxis_title="Price (£)", template="plotly_white")
+                    plotly_json = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
 
-                    # Convert graph to base64 for embedding in HTML
-                    buffer = BytesIO()
-                    plt.savefig(buffer, format='png', bbox_inches='tight')
-                    buffer.seek(0)
-                    chart_image = base64.b64encode(buffer.read()).decode('utf-8')
-                    buffer.close()
+            else:
+                # --- Future Prediction ---
+                future_days = (end_date - today).days
+                cache_model_path = os.path.join(CACHE_DIR, f"{symbol}_{today}_model.h5")
+                cache_scaler_path = os.path.join(CACHE_DIR, f"{symbol}_{today}_scaler.pkl")
+
+                if os.path.exists(cache_model_path) and os.path.exists(cache_scaler_path):
+                    model = load_model(cache_model_path)
+                    scaler = joblib.load(cache_scaler_path)
+                else:
+                    # Volatility calculation (separate df)
+                    df_vol = yf.download(symbol, period="1y")
+                    returns = df_vol['Close'].pct_change()
+                    vol_score = returns.std()
+                    vol_score = float(returns.std())
+                    if vol_score < 0.015:
+                        vol_category = "low"
+                    elif vol_score > 0.03:
+                        vol_category = "high"
+                    else:
+                        vol_category = "medium"
+
+                    # Full training data
+                    df = yf.download(symbol, period="10y")
+                    df = df[['Close']].dropna()
+
+                    if df.empty:
+                        raise ValueError(f"No historical data available for {symbol}.")
+
+                    scaler = MinMaxScaler()
+                    scaled_close = scaler.fit_transform(df[['Close']].values)
+                    X, y = create_sequences(scaled_close, seq_len=60)
+
+                    if len(X) == 0:
+                        raise ValueError("Not enough data to train.")
+
+                    split = int(0.8 * len(X))
+                    X_train, y_train = X[:split], y[:split]
+
+                    model = build_model(vol_category)
+                    model.fit(X_train, y_train, epochs=30, batch_size=32, verbose=0,
+                              callbacks=[EarlyStopping(monitor='loss', patience=3, restore_best_weights=True)])
+
+                    model.save(cache_model_path)
+                    joblib.dump(scaler, cache_scaler_path)
+
+                # Final prediction and plotting
+                df = yf.download(symbol, period="10y")
+                df = df[['Close']].dropna()
+                scaled_close = scaler.transform(df[['Close']].values)
+
+                X_full, y_full = create_sequences(scaled_close, seq_len=60)
+                split = int(0.8 * len(X_full))
+                X_test, y_test = X_full[split:], y_full[split:]
+                predicted_test = model.predict(X_test)
+
+                mse = mean_squared_error(y_test, predicted_test)
+                rmse_scaled = np.sqrt(mse)
+                real_error = scaler.inverse_transform([[rmse_scaled]])[0][0]
+
+                future_prices = predict_future_prices(model, scaled_close, future_days, 60, scaler)
+                future_prices = future_prices.flatten()
+
+                # Smooth shift
+                last_real_price = df['Close'].iloc[-1].item()
+                adjustment = last_real_price - future_prices[0]
+                future_prices += adjustment
+
+                current_price = df['Close'].iloc[-1].item()
+                predicted_price = future_prices[-1]
+
+                final_value = (investment_amount / current_price) * predicted_price
+                percentage_change = ((final_value - investment_amount) / investment_amount) * 100
+
+                future_dates = pd.date_range(start=df.index[-1] + datetime.timedelta(days=1), periods=future_days)
+
+                result = {
+                    'symbol': symbol,
+                    'investment_date': investment_date,
+                    'end_date': end_date,
+                    'initial_price': round(current_price, 2),
+                    'final_price': round(predicted_price, 2),
+                    'investment_amount': round(investment_amount, 2),
+                    'final_value': round(final_value, 2),
+                    'percentage_change': round(percentage_change, 2),
+                    'model_accuracy': f"±£{real_error:.2f}",
+                }
+
+                fig = go.Figure()
+                fig.add_trace(go.Scatter(x=df.index[-200:], y=df['Close'].values[-200:].flatten(), mode='lines', name="Recent Actual", line=dict(color='blue')))
+                fig.add_trace(go.Scatter(x=future_dates, y=future_prices, mode='lines', name="Predicted Future", line=dict(color='magenta')))
+                fig.update_layout(title=f"{symbol} Forecast from Today to {end_date}",
+                                  xaxis_title="Date", yaxis_title="Price (£)", template="plotly_white")
+                plotly_json = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
 
         except Exception as e:
             error_message = f"Error: {str(e)}"
 
     return render(request, 'what_if.html', {
         'result': result,
-        'chart_image': chart_image,
+        'plotly_json': plotly_json,
         'error_message': error_message,
         'symbol': request.GET.get('symbol', ''),
         'investment_date': request.GET.get('investment_date', ''),
+        'end_date': request.GET.get('end_date', ''),
         'investment_amount': request.GET.get('investment_amount', ''),
+        'today': datetime.date.today(),
     })
 
 @login_required
@@ -663,8 +1136,6 @@ def get_leaderboard(request):
 @login_required(login_url='/accounts/login/')
 def leaderboard_page(request):
     return render(request, 'leaderboard.html')
-
-from django.views.decorators.http import require_GET
 
 @require_GET
 def api_stock_data(request):
