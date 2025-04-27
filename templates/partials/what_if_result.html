@@ -1,0 +1,77 @@
+{% if result %}
+<div class="alert alert-light mt-4">
+    <h3 class="mb-4 text-center">Investment Analysis for {{ result.symbol }}</h3>
+    <div class="table-responsive">
+        <table class="table table-bordered table-striped text-left">
+            <tbody>
+                <tr>
+                    <th>Investment Date</th>
+                    <td>{{ result.investment_date }}</td>
+                </tr>
+                <tr>
+                    <th>End Date</th>
+                    <td>{{ result.end_date }}</td>
+                </tr>
+                <tr>
+                    <th>Price on Investment Date</th>
+                    <td>£{{ result.initial_price }}</td>
+                </tr>
+                <tr>
+                    <th>
+                        {% if result.end_date > today %}
+                            Predicted Price on {{ result.end_date }}
+                        {% else %}
+                            Price on {{ result.end_date }}
+                        {% endif %}
+                    </th>
+                    <td>£{{ result.final_price }}</td>
+                </tr>
+                <tr>
+                    <th>Investment Amount</th>
+                    <td>£{{ result.investment_amount }}</td>
+                </tr>
+                <tr>
+                    <th>Final Value</th>
+                    <td>£{{ result.final_value }}</td>
+                </tr>
+                <tr>
+                    <th>Percentage Change</th>
+                    <td>{{ result.percentage_change }}%</td>
+                </tr>
+                {% if result.percentage_change > 0 %}
+                <tr>
+                    <th class="text-success">Profit</th>
+                    <td class="text-success">You would have gained {{ result.percentage_change }}%</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <th class="text-danger">Loss</th>
+                    <td class="text-danger">You would have lost {{ result.percentage_change }}%</td>
+                </tr>
+                {% endif %}
+                {% if result.model_accuracy %}
+                <tr>
+                    <th>Model RMSE</th>
+                    <td>{{ result.model_accuracy }}</td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Plotly Chart -->
+<h3 class="mt-4">Stock Price
+    {% if result.end_date > today %}
+        Forecast
+    {% else %}
+        Growth Over Period
+    {% endif %}
+</h3>
+<div id="investment-chart" style="height: 500px;"></div>
+
+<script>
+    const graphData = {{ plotly_json|safe }};
+    Plotly.newPlot('investment-chart', graphData.data, graphData.layout);
+</script>
+{% endif %}

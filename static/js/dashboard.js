@@ -386,8 +386,10 @@ document.getElementById("confirmAddBtn").addEventListener("click", function () {
         newRow.classList.add("watch-row");
 
         // 🆕 Append the cloned row to Watchlist table
-        const watchlistTable = document.querySelector("table tbody");
-        watchlistTable.appendChild(newRow);
+        const watchlistBody = document.getElementById("watchlist-body");
+        if (watchlistBody) {
+          watchlistBody.appendChild(newRow);
+        }
 
         // 🆕 Remove the original suggested stock row
         suggestedRow.remove();

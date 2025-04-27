@@ -1,39 +1,20 @@
 import os
-from lib2to3.fixes.fix_input import context
 import random
-import joblib
 import matplotlib
-import plotly
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm, logger
 from django.http import JsonResponse
-from django.urls import reverse_lazy
 from django.views.decorators.csrf import csrf_exempt
-from django.views.generic import CreateView
-from django.shortcuts import render, redirect
-from django.contrib.auth import login
-from django.urls import reverse
-from keras.src.saving import load_model
-from plotly.subplots import make_subplots
 from sklearn.metrics import r2_score, mean_squared_error
-from verify_email.email_handler import send_verification_email
 from .forms import CustomUserCreationForm
 import requests
-import plotly.graph_objs as go
-import yfinance as yf
 from mplfinance.original_flavor import candlestick_ohlc
 import matplotlib.dates as mdates
-import matplotlib.pyplot as plt
-from io import BytesIO
-import base64
-import datetime
 from django.shortcuts import get_object_or_404
 from .models import *
 from sklearn.model_selection import train_test_split, TimeSeriesSplit
-from sklearn.utils.class_weight import compute_sample_weight
 from xgboost import XGBClassifier, XGBRegressor
 import plotly.graph_objs as go
-import numpy as np
 from django.shortcuts import redirect, render
 from allauth.socialaccount.models import SocialAccount
 from allauth.account.models import EmailAddress
@@ -47,16 +28,18 @@ import datetime
 import base64
 from io import BytesIO
 import numpy as np
-import pandas as pd
 import yfinance as yf
 import matplotlib.pyplot as plt
-from sklearn.preprocessing import MinMaxScaler
 from keras.models import Sequential
 from keras.layers import LSTM, Dense
 from keras.callbacks import EarlyStopping
 matplotlib.use('Agg')
+from Financial_Investment_Assistant.tasks import what_if_background_analysis
+import tensorflow as tf
 
-CACHE_DIR = "cache"
+CACHE_DIR = os.path.join(os.getcwd(), "cached_models")
+if not os.path.exists(CACHE_DIR):
+    os.makedirs(CACHE_DIR)
 
 def landing_page(request):
     return render(request, 'landing.html')
@@ -767,14 +750,12 @@ def buy_sell(request):
         'confidence': confidence,
     })
 
-import tensorflow as tf
-# Set random seed for reproducibility
+# Helpers
 def set_seed(seed=42):
     random.seed(seed)
     np.random.seed(seed)
     tf.random.set_seed(seed)
 
-# Create LSTM sequences
 def create_sequences(data, seq_len=60):
     X, y = [], []
     for i in range(seq_len, len(data)):
@@ -782,7 +763,6 @@ def create_sequences(data, seq_len=60):
         y.append(data[i])
     return np.array(X), np.array(y)
 
-# Predict future prices
 def predict_future_prices(model, data, n_days, seq_len, scaler):
     last_sequence = data[-seq_len:]
     future_predictions = []
@@ -793,38 +773,33 @@ def predict_future_prices(model, data, n_days, seq_len, scaler):
         last_sequence = np.append(last_sequence[1:], [[next_price]], axis=0)
     return scaler.inverse_transform(np.array(future_predictions).reshape(-1, 1))
 
-# Build model dynamically based on volatility
 def build_model(volatility_category):
     model = Sequential()
-
     if volatility_category == "low":
-        # For low volatility stocks like MSFT, AAPL
         model.add(LSTM(64, return_sequences=True, input_shape=(60, 1)))
         model.add(LSTM(64, return_sequences=True))
         model.add(LSTM(32))
     elif volatility_category == "high":
-        # For very volatile stocks like TSLA, NVDA
         model.add(LSTM(50, input_shape=(60, 1)))
     else:
-        # Medium volatility - normal configuration
         model.add(LSTM(50, return_sequences=True, input_shape=(60, 1)))
         model.add(LSTM(50))
-
     model.add(Dense(1))
     model.compile(optimizer='adam', loss='mean_squared_error')
     return model
 
+# Main View
 @login_required(login_url='/accounts/login/')
 def what_if_analysis(request):
     result = None
-    plotly_json = None
     error_message = None
+    task_id = request.GET.get('task_id')  # <-- get task_id from URL if exists
 
     if request.method == 'GET' and 'symbol' in request.GET:
-        symbol = request.GET.get('symbol').strip().upper()
-        investment_amount = request.GET.get('investment_amount')
-        investment_date_str = request.GET.get('investment_date')
-        end_date_str = request.GET.get('end_date')
+        symbol = request.GET.get('symbol', '').strip().upper()
+        investment_date_str = request.GET.get('investment_date', '')
+        end_date_str = request.GET.get('end_date', '')
+        investment_amount = request.GET.get('investment_amount', '')
 
         try:
             investment_amount = float(investment_amount)
@@ -835,151 +810,139 @@ def what_if_analysis(request):
             set_seed()
 
             if investment_date > today:
-                error_message = "Investment date cannot be in the future."
+                raise ValueError("Investment date cannot be in the future.")
             elif end_date < investment_date:
-                error_message = "End date must be after or equal to the investment date."
-            elif end_date > today + datetime.timedelta(days=30):
-                error_message = "End date must be within 30 days from today."
+                raise ValueError("End date must be after or equal to the investment date.")
+            elif (end_date - today).days > 30:
+                raise ValueError("End date must be within 30 days from today.")
+            elif end_date > today and not task_id:
+                # Start future prediction task
+                task = what_if_background_analysis.delay(
+                    user_email=request.user.email,
+                    symbol=symbol,
+                    investment_date_str=investment_date_str,
+                    end_date_str=end_date_str,
+                    investment_amount=investment_amount
+                )
+                task_id = task.id
+                return redirect(f"/what-if/?task_id={task_id}")   # 🔥 Redirect immediately with task_id!
 
-            elif end_date <= today:
-                # --- Historical Analysis ---
+            if not task_id:
+                # Instant historical analysis
                 stock = yf.Ticker(symbol)
-                data = stock.history(start=investment_date, end=end_date)
+                data = stock.history(start=investment_date - datetime.timedelta(days=1), end=end_date + datetime.timedelta(days=1))
+                data.index = data.index.date  # Force pure dates
 
                 if data.empty:
-                    error_message = f"No data found for {symbol} between {investment_date} and {end_date}."
+                    raise ValueError(f"No data found for {symbol} between {investment_date} and {end_date}.")
+
+                if investment_date in data.index:
+                    investment_price = data.loc[investment_date]['Open']
+                    if np.isnan(investment_price):
+                        investment_price = data.loc[investment_date]['Close']
                 else:
-                    initial_price = float(data.iloc[0]['Close'])
-                    final_price = float(data.iloc[-1]['Close'])
-                    final_value = (investment_amount / initial_price) * final_price
-                    percentage_change = ((final_value - investment_amount) / investment_amount) * 100
+                    raise ValueError("No available data for investment date. Market may have been closed.")
 
-                    result = {
-                        'symbol': symbol,
-                        'investment_date': investment_date,
-                        'end_date': end_date,
-                        'initial_price': round(initial_price, 2),
-                        'final_price': round(final_price, 2),
-                        'investment_amount': round(investment_amount, 2),
-                        'final_value': round(final_value, 2),
-                        'percentage_change': round(percentage_change, 2),
-                        'model_accuracy': None,
-                    }
-
-                    fig = go.Figure()
-                    fig.add_trace(go.Scatter(x=data.index, y=data['Close'], mode='lines', name=f"{symbol} Price"))
-                    fig.update_layout(title=f"{symbol} Price from {investment_date} to {end_date}",
-                                      xaxis_title="Date", yaxis_title="Price (£)", template="plotly_white")
-                    plotly_json = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
-
-            else:
-                # --- Future Prediction ---
-                future_days = (end_date - today).days
-                cache_model_path = os.path.join(CACHE_DIR, f"{symbol}_{today}_model.h5")
-                cache_scaler_path = os.path.join(CACHE_DIR, f"{symbol}_{today}_scaler.pkl")
-
-                if os.path.exists(cache_model_path) and os.path.exists(cache_scaler_path):
-                    model = load_model(cache_model_path)
-                    scaler = joblib.load(cache_scaler_path)
+                if end_date in data.index:
+                    final_price = data.loc[end_date]['Close']
                 else:
-                    # Volatility calculation (separate df)
-                    df_vol = yf.download(symbol, period="1y")
-                    returns = df_vol['Close'].pct_change()
-                    vol_score = returns.std()
-                    vol_score = float(returns.std())
-                    if vol_score < 0.015:
-                        vol_category = "low"
-                    elif vol_score > 0.03:
-                        vol_category = "high"
-                    else:
-                        vol_category = "medium"
+                    final_price = data.iloc[-1]['Close']
 
-                    # Full training data
-                    df = yf.download(symbol, period="10y")
-                    df = df[['Close']].dropna()
-
-                    if df.empty:
-                        raise ValueError(f"No historical data available for {symbol}.")
-
-                    scaler = MinMaxScaler()
-                    scaled_close = scaler.fit_transform(df[['Close']].values)
-                    X, y = create_sequences(scaled_close, seq_len=60)
-
-                    if len(X) == 0:
-                        raise ValueError("Not enough data to train.")
-
-                    split = int(0.8 * len(X))
-                    X_train, y_train = X[:split], y[:split]
-
-                    model = build_model(vol_category)
-                    model.fit(X_train, y_train, epochs=30, batch_size=32, verbose=0,
-                              callbacks=[EarlyStopping(monitor='loss', patience=3, restore_best_weights=True)])
-
-                    model.save(cache_model_path)
-                    joblib.dump(scaler, cache_scaler_path)
-
-                # Final prediction and plotting
-                df = yf.download(symbol, period="10y")
-                df = df[['Close']].dropna()
-                scaled_close = scaler.transform(df[['Close']].values)
-
-                X_full, y_full = create_sequences(scaled_close, seq_len=60)
-                split = int(0.8 * len(X_full))
-                X_test, y_test = X_full[split:], y_full[split:]
-                predicted_test = model.predict(X_test)
-
-                mse = mean_squared_error(y_test, predicted_test)
-                rmse_scaled = np.sqrt(mse)
-                real_error = scaler.inverse_transform([[rmse_scaled]])[0][0]
-
-                future_prices = predict_future_prices(model, scaled_close, future_days, 60, scaler)
-                future_prices = future_prices.flatten()
-
-                # Smooth shift
-                last_real_price = df['Close'].iloc[-1].item()
-                adjustment = last_real_price - future_prices[0]
-                future_prices += adjustment
-
-                current_price = df['Close'].iloc[-1].item()
-                predicted_price = future_prices[-1]
-
-                final_value = (investment_amount / current_price) * predicted_price
+                final_value = (investment_amount / investment_price) * final_price
                 percentage_change = ((final_value - investment_amount) / investment_amount) * 100
 
-                future_dates = pd.date_range(start=df.index[-1] + datetime.timedelta(days=1), periods=future_days)
+                graph_dates = [d.strftime("%Y-%m-%d") for d in data.index]
+                graph_prices = [float(p) for p in data['Close'].tolist()]
 
                 result = {
                     'symbol': symbol,
                     'investment_date': investment_date,
                     'end_date': end_date,
-                    'initial_price': round(current_price, 2),
-                    'final_price': round(predicted_price, 2),
-                    'investment_amount': round(investment_amount, 2),
-                    'final_value': round(final_value, 2),
-                    'percentage_change': round(percentage_change, 2),
-                    'model_accuracy': f"±£{real_error:.2f}",
+                    'initial_price': float(round(investment_price, 2)),
+                    'final_price': float(round(final_price, 2)),
+                    'investment_amount': float(round(investment_amount, 2)),
+                    'final_value': float(round(final_value, 2)),
+                    'percentage_change': float(round(percentage_change, 2)),
+                    'graph_dates': graph_dates,
+                    'graph_prices': graph_prices,
                 }
-
-                fig = go.Figure()
-                fig.add_trace(go.Scatter(x=df.index[-200:], y=df['Close'].values[-200:].flatten(), mode='lines', name="Recent Actual", line=dict(color='blue')))
-                fig.add_trace(go.Scatter(x=future_dates, y=future_prices, mode='lines', name="Predicted Future", line=dict(color='magenta')))
-                fig.update_layout(title=f"{symbol} Forecast from Today to {end_date}",
-                                  xaxis_title="Date", yaxis_title="Price (£)", template="plotly_white")
-                plotly_json = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
 
         except Exception as e:
             error_message = f"Error: {str(e)}"
 
+    user_past_tasks = WhatIfTaskResult.objects.filter(
+        user_email=request.user.email,
+        status='completed'
+    ).order_by('-created_at')
     return render(request, 'what_if.html', {
         'result': result,
-        'plotly_json': plotly_json,
         'error_message': error_message,
         'symbol': request.GET.get('symbol', ''),
         'investment_date': request.GET.get('investment_date', ''),
         'end_date': request.GET.get('end_date', ''),
         'investment_amount': request.GET.get('investment_amount', ''),
         'today': datetime.date.today(),
+        'task_id': task_id,
+        'user_past_tasks': user_past_tasks,
     })
+
+@require_GET
+@login_required(login_url='/accounts/login/')
+def what_if_status(request):
+    task_id = request.GET.get("task_id")
+    if not task_id:
+        return JsonResponse({"status": "error", "message": "Missing task_id"}, status=400)
+
+    try:
+        task = WhatIfTaskResult.objects.get(task_id=task_id)
+    except WhatIfTaskResult.DoesNotExist:
+        return JsonResponse({"status": "pending"}, status=202)
+
+    if task.status == "pending":
+        return JsonResponse({"status": "pending"}, status=202)
+    elif task.status == "completed":
+        return JsonResponse({
+            "status": "completed",
+            "result_url": f"/what-if-result/?task_id={task_id}",
+        }, status=200)
+    elif task.status == "failed":
+        return JsonResponse({
+            "status": "failed",
+            "message": task.error_message,
+        }, status=500)
+    else:
+        return JsonResponse({"status": "error", "message": "Unknown status."}, status=500)
+
+@login_required(login_url='/accounts/login/')
+def what_if_result(request):
+    task_id = request.GET.get('task_id')
+
+    if not task_id:
+        return redirect('what_if_analysis')
+
+    try:
+        task = WhatIfTaskResult.objects.get(task_id=task_id)
+    except WhatIfTaskResult.DoesNotExist:
+        return render(request, 'what_if.html', {
+            'error_message': "Your analysis is not ready yet. Please check again later.",
+            'today': datetime.date.today(),
+        })
+
+    if task.status == "completed":
+        return render(request, 'what_if_result.html', {
+            'result': task.result_json,
+            'today': datetime.date.today(),
+        })
+    elif task.status == "failed":
+        return render(request, 'what_if.html', {
+            'error_message': task.error_message or "Something went wrong.",
+            'today': datetime.date.today(),
+        })
+    else:
+        return render(request, 'what_if.html', {
+            'error_message': "Your analysis is still running. Please wait a few minutes.",
+            'today': datetime.date.today(),
+        })
 
 @login_required
 def get_quiz_questions(request):

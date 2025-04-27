@@ -99,7 +99,7 @@
         <h5 class="card-title">📌 Stocks I'm Watching</h5>
         <div class="d-flex justify-content-between align-items-center mt-3 mb-3">
           <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addWatchModal">
-            ➕ Add Stock
+            <i class="bi bi-plus-circle-fill"></i> Add Stock
           </button>
         </div>
         <div class="modal fade" id="addWatchModal" tabindex="-1" aria-labelledby="addWatchModalLabel" aria-hidden="true">
@@ -139,7 +139,7 @@
                     <th style="width: 5%;">Actions</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody id="watchlist-body">
                   {% for stock in watched_stocks %}
                     <tr class="watch-row {% if forloop.counter > 5 %}d-none extra-row{% endif %}" id="stock-{{ stock.symbol }}" data-symbol="{{ stock.symbol }}">
                       <td><strong>{{ stock.symbol }}</strong></td>

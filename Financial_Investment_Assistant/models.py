@@ -78,3 +78,11 @@ class WatchedStock(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.symbol}"
+
+class WhatIfTaskResult(models.Model):
+    task_id = models.CharField(max_length=255, unique=True)
+    user_email = models.EmailField()
+    status = models.CharField(max_length=20, choices=[('pending', 'Pending'), ('completed', 'Completed'), ('failed', 'Failed')], default='pending')
+    result_json = models.JSONField(null=True, blank=True)
+    error_message = models.TextField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)

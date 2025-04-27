@@ -3,11 +3,13 @@ document.addEventListener("DOMContentLoaded", function () {
     const context = wrapper.dataset.context || "main";
     const input = wrapper.querySelector(`#stock-search-${context}`);
     const dropdown = wrapper.querySelector(`#search-results-${context}`);
+    let currentIndex = -1;
 
     if (!input || !dropdown) return;
 
     input.addEventListener("input", function () {
       const query = this.value.trim();
+      currentIndex = -1;
 
       if (query.length < 2) {
         dropdown.innerHTML = "";
@@ -30,8 +32,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 <span class="badge bg-secondary">${stock.exchange}</span>
               `;
 
-              item.addEventListener("mouseover", () => item.classList.add("active"));
-              item.addEventListener("mouseout", () => item.classList.remove("active"));
               item.addEventListener("click", () => {
                 input.value = stock.symbol;
                 dropdown.innerHTML = "";
@@ -54,6 +54,36 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 
+    // 🧠 Keyboard navigation
+    input.addEventListener("keydown", function (e) {
+      const items = dropdown.querySelectorAll(".result-item");
+      if (items.length === 0 || dropdown.classList.contains("d-none")) return;
+
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        currentIndex = (currentIndex + 1) % items.length;
+        updateActive(items);
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        currentIndex = (currentIndex - 1 + items.length) % items.length;
+        updateActive(items);
+      } else if (e.key === "Enter") {
+        if (currentIndex >= 0 && items[currentIndex]) {
+          e.preventDefault(); // important!
+          items[currentIndex].click();
+        }
+      }
+    });
+
+    function updateActive(items) {
+      items.forEach((item) => item.classList.remove("active"));
+      if (currentIndex >= 0 && items[currentIndex]) {
+        items[currentIndex].classList.add("active");
+        items[currentIndex].scrollIntoView({ block: "nearest" });
+      }
+    }
+
+    // Hide dropdown on click outside
     document.addEventListener("click", function (e) {
       if (!wrapper.contains(e.target)) {
         dropdown.innerHTML = "";

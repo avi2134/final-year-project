@@ -25,7 +25,11 @@ SECRET_KEY = 'django-insecure-lj0@ij&-1ug#bsqs+h&)0li4j6%u=#ea750wg1(-1f$-)2qh2o
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
+
+CSRF_TRUSTED_ORIGINS = [
+    'https://01e5-31-205-73-174.ngrok-free.app'
+]
 
 
 # Application definition
@@ -173,3 +177,9 @@ DEFAULT_FROM_EMAIL = 'investgrowteam00@gmail.com'
 
 ACCOUNT_EMAIL_CONFIRMATION_ANONYMOUS_REDIRECT_URL = '/'
 ACCOUNT_EMAIL_CONFIRMATION_AUTHENTICATED_REDIRECT_URL = '/'
+
+# Celery Configuration
+CELERY_BROKER_URL = 'redis://localhost:6380/0'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_BACKEND = 'redis://localhost:6380/0'
