@@ -2,10 +2,10 @@ let marketChart = null;
 let addSymbol = null;
 
 document.addEventListener("DOMContentLoaded", function () {
-    fetchNews();             // General news
-    fetchRelatedNews();      // Stock-specific carousel news
-    fetchMarketSummary();    // Indices like S&P, Nasdaq, Dow
-    fetchGainersAndLosers(); // Dynamic gainers/losers
+    fetchNews();
+    fetchRelatedNews();
+    fetchMarketSummary();
+    fetchGainersAndLosers();
     setupMarketClickForSparkline();
 });
 
@@ -385,16 +385,16 @@ document.getElementById("confirmAddBtn").addEventListener("click", function () {
         newRow.dataset.symbol = addSymbol;
         newRow.classList.add("watch-row");
 
-        // 🆕 Append the cloned row to Watchlist table
+        // Append the cloned row to Watchlist table
         const watchlistBody = document.getElementById("watchlist-body");
         if (watchlistBody) {
           watchlistBody.appendChild(newRow);
         }
 
-        // 🆕 Remove the original suggested stock row
+        // Remove the original suggested stock row
         suggestedRow.remove();
 
-        // 🆕 Check if no more suggestions left
+        // Check if no more suggestions left
         const suggestedBody = document.getElementById("suggested-stocks-body");
         if (suggestedBody && suggestedBody.children.length === 0) {
           document.getElementById("suggested-stocks-table").classList.add("d-none");
@@ -405,7 +405,7 @@ document.getElementById("confirmAddBtn").addEventListener("click", function () {
       alert(data.error || "Failed to add stock.");
     }
 
-    // 🆕 Close the Add Confirmation Modal
+    // Close the Add Confirmation Modal
     const modalElement = document.getElementById("addConfirmModal");
     const modalInstance = bootstrap.Modal.getInstance(modalElement);
     modalInstance.hide();

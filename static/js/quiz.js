@@ -131,6 +131,7 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 
+    // The XPbar code has been modified from ProgressBar.js 1.1.1 (https://kimmobrunfeldt.github.io/progressbar.js)
     function showXPProgress(xpPercentage) {
         let container = document.getElementById("container");
         container.innerHTML = ""; // Clear previous progress bar
@@ -143,8 +144,8 @@ document.addEventListener("DOMContentLoaded", function () {
         text: {
             autoStyleContainer: false
         },
-        from: { color: '#FC5B3F', width: 2 },  // 🔴 Start Color (Red)
-        to: { color: '#6DD47E', width: 6 },   // 🟢 End Color (Green)
+        from: { color: '#FC5B3F', width: 2 },  // Start Color (Red)
+        to: { color: '#6DD47E', width: 6 },   // End Color (Green)
         svgStyle: { width: "200px", height: "200px" },
         step: function(state, circle) {
             let progressValue = Math.round(circle.value() * 100);

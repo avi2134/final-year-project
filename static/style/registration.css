@@ -1,9 +1,7 @@
-/* Background color for full page */
 body {
     background-color: #212529;
 }
 
-/* Custom styling for login container */
 .login-container  {
     background-color: #343a40;
     color: white;
@@ -14,7 +12,6 @@ body {
     max-width: 400px;
 }
 
-/* Adjust input field appearance */
 .form-control {
     background-color: #495057;
     color: white;
@@ -25,7 +22,6 @@ body {
     color: #adb5bd;
 }
 
-/* Improve button styling */
 .btn-primary {
     background-color: #007bff;
     border: none;
@@ -35,7 +31,6 @@ body {
     background-color: #0056b3;
 }
 
-/* Improve link styles */
 .text-warning:hover {
     color: #ffc107 !important;
 }

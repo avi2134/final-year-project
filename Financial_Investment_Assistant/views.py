@@ -8,8 +8,6 @@ from django.views.decorators.csrf import csrf_exempt
 from sklearn.metrics import r2_score, mean_squared_error
 from .forms import CustomUserCreationForm
 import requests
-from mplfinance.original_flavor import candlestick_ohlc
-import matplotlib.dates as mdates
 from django.shortcuts import get_object_or_404
 from .models import *
 from sklearn.model_selection import train_test_split, TimeSeriesSplit
@@ -25,14 +23,10 @@ import json
 from django.views.decorators.http import require_GET
 from django.core.cache import cache
 import datetime
-import base64
-from io import BytesIO
 import numpy as np
 import yfinance as yf
-import matplotlib.pyplot as plt
 from keras.models import Sequential
 from keras.layers import LSTM, Dense
-from keras.callbacks import EarlyStopping
 matplotlib.use('Agg')
 from Financial_Investment_Assistant.tasks import what_if_background_analysis
 import tensorflow as tf
@@ -404,54 +398,12 @@ def fetch_news(request):
 
     return JsonResponse({"articles": articles})
 
-def fetch_trending_stocks(request):
-    cache_key = f"trending_stocks_{datetime.date.today()}"
-    cached_data = cache.get(cache_key)
-    if cached_data:
-        return JsonResponse({"trending": cached_data})
-
-    try:
-        # Fetch trending stock symbols from Yahoo Finance API
-        url = "https://query1.finance.yahoo.com/v1/finance/trending/US"
-        response = requests.get(url, headers={"User-Agent": "Mozilla/5.0"})
-        data = response.json()
-
-        print("Raw API Response:", data)  # Debugging
-
-        # Check if the response contains the expected data
-        if "finance" in data and "result" in data["finance"] and len(data["finance"]["result"]) > 0:
-            trending_stocks = []
-            symbols = [stock["symbol"] for stock in data["finance"]["result"][0]["quotes"]]
-
-            # Fetch stock prices using Yahoo Finance (yfinance)
-            stock_data = yf.Tickers(" ".join(symbols))
-
-            for symbol in symbols:
-                try:
-                    stock_info = stock_data.tickers[symbol].history(period="1d")
-                    latest_price = round(stock_info['Close'].iloc[-1], 2) if not stock_info.empty else "N/A"
-                except:
-                    latest_price = "N/A"
-
-                trending_stocks.append({
-                    "symbol": symbol,
-                    "price": latest_price
-                })
-            cache.set(cache_key, trending_stocks[:14], timeout=60 * 60 * 3)
-            return JsonResponse({"trending": trending_stocks[:14]})
-
-        return JsonResponse({"error": "Unexpected API structure"}, status=500)
-
-    except Exception as e:
-        print("Error fetching trending stocks:", str(e))  # Debugging
-        return JsonResponse({"error": str(e)}, status=500)
-
 def signup_view(request):
     if request.method == 'POST':
         form = CustomUserCreationForm(request.POST)
         if form.is_valid():
             user = form.save(commit=False)
-            user.is_active = True  # Skip email verification for now
+            user.is_active = True
             user.save()
             return redirect('login')  # Redirect to Login or home page
         else:
@@ -459,104 +411,6 @@ def signup_view(request):
     else:
         form = CustomUserCreationForm()
     return render(request, 'registration/signup.html', {'form': form})
-
-# Calculate Exponential Moving Average
-def calculate_ema(data, period):
-    ema = data['Close'].ewm(span=period, adjust=False).mean()
-    return ema
-
-# Calculate Relative Strength Index
-def calculate_rsi(data, period=14):
-    delta = data['Close'].diff(1)
-    gain = delta.where(delta > 0, 0)
-    loss = -delta.where(delta < 0, 0)
-
-    avg_gain = gain.rolling(window=period).mean()
-    avg_loss = loss.rolling(window=period).mean()
-
-    rs = avg_gain / avg_loss
-    rsi = 100 - (100 / (1 + rs))
-    return rsi
-
-# Generate Buy/Sell signals with Risk Adjustment
-def generate_signals(data, risk_level):
-    data['Signal'] = 0
-
-    # print("RSI Values:", data['RSI'].tail())  # Print last few RSI values
-    # print("EMA Values:", data[['EMA_5', 'EMA_8', 'EMA_13']].tail())  # Print last few EMA values
-
-    if risk_level == 'low':  # Conservative signals
-        data.loc[
-            (data['RSI'] < 30) &
-            (data['EMA_5'] > data['EMA_8']) &
-            (data['EMA_8'] > data['EMA_13']),
-            'Signal'
-        ] = 1  # Buy
-        data.loc[
-            (data['RSI'] > 70) &
-            (data['EMA_5'] < data['EMA_8']) &
-            (data['EMA_8'] < data['EMA_13']),
-            'Signal'
-        ] = -1  # Sell
-    elif risk_level == 'moderate':  # Default signals
-        data.loc[
-            (data['RSI'] < 40) &
-            (data['EMA_5'] > data['EMA_8']) &
-            (data['EMA_8'] > data['EMA_13']),
-            'Signal'
-        ] = 1  # Buy
-        data.loc[
-            (data['RSI'] > 60) &
-            (data['EMA_5'] < data['EMA_8']) &
-            (data['EMA_8'] < data['EMA_13']),
-            'Signal'
-        ] = -1  # Sell
-    elif risk_level == 'high':  # Aggressive signals
-        data.loc[
-            (data['RSI'] < 50) &
-            (data['EMA_5'] > data['EMA_8']) &
-            (data['EMA_8'] > data['EMA_13']),
-            'Signal'
-        ] = 1  # Buy
-        data.loc[
-            (data['RSI'] > 50) &
-            (data['EMA_5'] < data['EMA_8']) &
-            (data['EMA_8'] < data['EMA_13']),
-            'Signal'
-        ] = -1  # Sell
-    return data
-
-# Plot candlestick chart with signals
-def plot_candlestick(data):
-    data['Date'] = mdates.date2num(data.index)
-    ohlc_data = data[['Date', 'Open', 'High', 'Low', 'Close']]
-
-    plt.figure(figsize=(14, 7))
-    ax = plt.subplot()
-
-    candlestick_ohlc(ax, ohlc_data.values, width=0.6, colorup='green', colordown='red', alpha=0.8)
-
-    plt.plot(data.index, data['EMA_5'], label="EMA 5", color='blue', linestyle='--', linewidth=1)
-    plt.plot(data.index, data['EMA_8'], label="EMA 8", color='orange', linestyle='--', linewidth=1)
-    plt.plot(data.index, data['EMA_13'], label="EMA 13", color='purple', linestyle='--', linewidth=1)
-
-    # Plot buy and sell signals
-    plt.scatter(data.index[data['Signal'] == 1], data['Close'][data['Signal'] == 1], label="Buy Signal", marker='^', color='green', alpha=1)
-    plt.scatter(data.index[data['Signal'] == -1], data['Close'][data['Signal'] == -1], label="Sell Signal", marker='v', color='red', alpha=1)
-
-    plt.title("Candlestick Chart with Buy/Sell Signals")
-    plt.xlabel("Date")
-    plt.ylabel("Price")
-    plt.legend()
-    plt.grid()
-
-    # Convert plot to base64 image
-    buffer = BytesIO()
-    plt.savefig(buffer, format='png')
-    buffer.seek(0)
-    chart_image = base64.b64encode(buffer.read()).decode('utf-8')
-    buffer.close()
-    return chart_image
 
 @login_required(login_url='/accounts/login/')
 def buy_sell(request):
@@ -707,7 +561,7 @@ def buy_sell(request):
             </ul>
             """
 
-        # === Simple Chart (Price + Buy Signals Only) ===
+        # Simple Chart
         predicted_returns = final_model.predict(X)
         buy_zones = (predicted_returns > final_threshold) & (data['RSI'] < params['rsi_max'])
         buy_dates = data.index[buy_zones]
@@ -793,7 +647,7 @@ def build_model(volatility_category):
 def what_if_analysis(request):
     result = None
     error_message = None
-    task_id = request.GET.get('task_id')  # <-- get task_id from URL if exists
+    task_id = request.GET.get('task_id')  # get task_id from URL if exists
 
     if request.method == 'GET' and 'symbol' in request.GET:
         symbol = request.GET.get('symbol', '').strip().upper()
@@ -825,7 +679,7 @@ def what_if_analysis(request):
                     investment_amount=investment_amount
                 )
                 task_id = task.id
-                return redirect(f"/what-if/?task_id={task_id}")   # 🔥 Redirect immediately with task_id!
+                return redirect(f"/what-if/?task_id={task_id}")   # Redirect immediately with task_id!
 
             if not task_id:
                 # Instant historical analysis
@@ -874,6 +728,7 @@ def what_if_analysis(request):
         user_email=request.user.email,
         status='completed'
     ).order_by('-created_at')
+
     return render(request, 'what_if.html', {
         'result': result,
         'error_message': error_message,
@@ -1100,6 +955,7 @@ def get_leaderboard(request):
 def leaderboard_page(request):
     return render(request, 'leaderboard.html')
 
+# API for testing Jupyter Notebook and Google Colab  Code
 @require_GET
 def api_stock_data(request):
     symbol = request.GET.get("symbol", "AAPL")

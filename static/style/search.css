@@ -28,7 +28,14 @@
 }
 
 .list-group-item.active {
-    background-color: #3d6a7f; !important;
+    background-color: #3d6a7f !important;
+    border-color: #3d6a7f !important;
+    cursor: pointer !important;
+    overflow-y: auto;
+}
+
+.list-group-item.hover {
+    background-color: #3d6a7f !important;
     border-color: #3d6a7f !important;
     cursor: pointer !important;
     overflow-y: auto;

@@ -28,7 +28,7 @@ DEBUG = True
 ALLOWED_HOSTS = ['*']
 
 CSRF_TRUSTED_ORIGINS = [
-    'https://01e5-31-205-73-174.ngrok-free.app'
+    'https://d4db-31-205-73-174.ngrok-free.app'
 ]
 
 
@@ -47,8 +47,8 @@ INSTALLED_APPS = [
     'allauth.socialaccount',
     'allauth.socialaccount.providers.google',
     'allauth.socialaccount.providers.github',
-    'allauth.socialaccount.providers.facebook',
     'django.contrib.sites',
+    'django_extensions',
 ]
 
 MIDDLEWARE = [
@@ -170,8 +170,8 @@ EMAIL_HOST = 'in-v3.mailjet.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 
-EMAIL_HOST_USER = 'cdbe34179daf45fba81937ccc7baf4a4'  # Your Mailjet API Key
-EMAIL_HOST_PASSWORD = '40830792bc4bf5c8401b385e5adc3323'  # Your Mailjet Secret Key
+EMAIL_HOST_USER = 'cdbe34179daf45fba81937ccc7baf4a4'
+EMAIL_HOST_PASSWORD = '40830792bc4bf5c8401b385e5adc3323'
 
 DEFAULT_FROM_EMAIL = 'investgrowteam00@gmail.com'
 

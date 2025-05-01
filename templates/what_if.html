@@ -17,7 +17,14 @@
     <div class="container mt-4">
         <h1>What-If Investment Analysis</h1>
         <p>See how much your investment would be worth today — or up to 30 days into the future — if you had invested on a specific date.</p>
-
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+          Results may not exactly reflect real-world outcomes and are intended for illustrative purposes only.
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        <div class="alert alert-warning alert-dismissible fade show" role="alert">
+            Avoid selecting weekends or public holidays as investment dates, as market data may be unavailable.
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
         <!-- Form for user input -->
         <form method="get" class="mb-4" id="analysis-form">
             <div class="row g-3 align-items-end">

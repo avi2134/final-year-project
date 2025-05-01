@@ -1,5 +1,4 @@
 from __future__ import absolute_import, unicode_literals
-
 import os
 import random
 import datetime
@@ -14,7 +13,6 @@ from sklearn.preprocessing import MinMaxScaler
 from keras.models import Sequential, load_model
 from keras.layers import LSTM, Dense
 from keras.callbacks import EarlyStopping
-
 from .models import WhatIfTaskResult
 
 # Setup cache directory
@@ -76,7 +74,7 @@ def what_if_background_analysis(self, user_email, symbol, investment_date_str, e
         investment_date = datetime.datetime.strptime(investment_date_str, "%Y-%m-%d").date()
         end_date = datetime.datetime.strptime(end_date_str, "%Y-%m-%d").date()
 
-        # Step 1: Historical data
+        # Historical data
         stock = yf.Ticker(symbol)
         hist_data = stock.history(start=investment_date - datetime.timedelta(days=1), end=today + datetime.timedelta(days=1))
         hist_data.index = hist_data.index.date
@@ -96,7 +94,7 @@ def what_if_background_analysis(self, user_email, symbol, investment_date_str, e
         predicted_dates = []
         predicted_prices = []
 
-        # Step 2: Future prediction if needed
+        # Future prediction if needed
         if end_date > today:
             future_days = (end_date - today).days
 
@@ -125,7 +123,7 @@ def what_if_background_analysis(self, user_email, symbol, investment_date_str, e
                 X_train, y_train = X[:split], y[:split]
 
                 model = build_model(vol_category)
-                model.fit(X_train, y_train, epochs=30, batch_size=32, verbose=0,
+                model.fit(X_train, y_train, validation_split=0.1, epochs=30, batch_size=32, verbose=0,
                           callbacks=[EarlyStopping(monitor='loss', patience=3, restore_best_weights=True)])
 
                 model.save(cache_model_path)
@@ -147,7 +145,7 @@ def what_if_background_analysis(self, user_email, symbol, investment_date_str, e
         else:
             final_price = historical_prices[-1]
 
-        # Step 3: Final calculations
+        # Final calculations
         final_value = (float(investment_amount) / investment_price) * final_price
         percentage_change = ((final_value - float(investment_amount)) / float(investment_amount)) * 100
 
@@ -170,7 +168,7 @@ def what_if_background_analysis(self, user_email, symbol, investment_date_str, e
         task_obj.result_json = result_data
         task_obj.save()
 
-        # Step 4: Send the email
+        # Send the email
         result_url = f"http://127.0.0.1:8000/what-if-result/?task_id={task_id}"
 
         email_body = f"""
@@ -195,7 +193,7 @@ def what_if_background_analysis(self, user_email, symbol, investment_date_str, e
             send_mail(
                 subject=f"Your What-If Analysis for {symbol}",
                 message=email_body,
-                from_email=None,  # Configure your actual email in settings
+                from_email=None,
                 recipient_list=[user_email],
                 fail_silently=False,
             )

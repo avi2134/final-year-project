@@ -13,6 +13,12 @@
     <div class="login-container p-4 border border-dark-subtle rounded-1">
         <h3 class="text-center mb-3">Register Your Account</h3>
 
+        {% if form.errors %}
+            <div class="alert alert-danger">
+                An error occurred. Please try again.
+            </div>
+        {% endif %}
+
         <form method="post">
             {% csrf_token %}
 

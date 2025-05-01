@@ -3,9 +3,19 @@ document.addEventListener("DOMContentLoaded", function () {
     const context = wrapper.dataset.context || "main";
     const input = wrapper.querySelector(`#stock-search-${context}`);
     const dropdown = wrapper.querySelector(`#search-results-${context}`);
-    let currentIndex = -1;
 
     if (!input || !dropdown) return;
+
+    let currentIndex = -1;
+
+    function updateActive(items) {
+      items.forEach((item, i) => {
+        item.classList.toggle("active", i === currentIndex);
+      });
+      if (currentIndex >= 0 && items[currentIndex]) {
+        items[currentIndex].scrollIntoView({ block: "nearest" });
+      }
+    }
 
     input.addEventListener("input", function () {
       const query = this.value.trim();
@@ -26,11 +36,19 @@ document.addEventListener("DOMContentLoaded", function () {
             data.bestMatches.forEach((stock) => {
               const item = document.createElement("li");
               item.classList.add("list-group-item", "result-item");
-
               item.innerHTML = `
                 <strong>${stock.symbol}</strong> - ${stock.name}
                 <span class="badge bg-secondary">${stock.exchange}</span>
               `;
+
+              item.addEventListener("mouseover", () => {
+                currentIndex = -1;
+                item.classList.add("active");
+              });
+
+              item.addEventListener("mouseout", () => {
+                item.classList.remove("active");
+              });
 
               item.addEventListener("click", () => {
                 input.value = stock.symbol;
@@ -54,10 +72,9 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 
-    // 🧠 Keyboard navigation
     input.addEventListener("keydown", function (e) {
       const items = dropdown.querySelectorAll(".result-item");
-      if (items.length === 0 || dropdown.classList.contains("d-none")) return;
+      if (!items.length) return;
 
       if (e.key === "ArrowDown") {
         e.preventDefault();
@@ -69,21 +86,12 @@ document.addEventListener("DOMContentLoaded", function () {
         updateActive(items);
       } else if (e.key === "Enter") {
         if (currentIndex >= 0 && items[currentIndex]) {
-          e.preventDefault(); // important!
+          e.preventDefault();
           items[currentIndex].click();
         }
       }
     });
 
-    function updateActive(items) {
-      items.forEach((item) => item.classList.remove("active"));
-      if (currentIndex >= 0 && items[currentIndex]) {
-        items[currentIndex].classList.add("active");
-        items[currentIndex].scrollIntoView({ block: "nearest" });
-      }
-    }
-
-    // Hide dropdown on click outside
     document.addEventListener("click", function (e) {
       if (!wrapper.contains(e.target)) {
         dropdown.innerHTML = "";
