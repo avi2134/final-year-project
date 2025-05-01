@@ -142,3 +142,8 @@
 * Next Week's Priorities:
   * Continue working on improving the UI and Machine Learning Models.
   * Integrate the LSTM to what if analysis.
+
+## Weeks of April 4, 2025 to April 30, 2025
+
+### Weekly Summary
+* All of the remaining tasks have been completed.
