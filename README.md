@@ -41,7 +41,7 @@ Third_Year_Project/
 
 ## System Requirements
 
-- **OS**: Windows 10/11, macOS, or any Linux distro
+- **OS**: Windows 10/11, macOS, or Linux
 - **Python**: 3.9+
 - **PostgreSQL** (running locally on port 5432)
 - **Redis** (running on port 6380)
@@ -55,7 +55,7 @@ Third_Year_Project/
 ### 1. Clone the Repository
 
 ```bash
-git clone <your-repo-url>
+git clone <git-repo-url>
 cd as1473
 ```
 
@@ -78,12 +78,14 @@ pip install django celery redis yfinance numpy pandas tensorflow joblib django-a
 
 ### Database Setup (PostgreSQL)
 
+Set up a PostgreSQL database and configure the settings in Django settings.py accordingly.
+
 ```bash
 python manage.py makemigrations
 python manage.py migrate
 ```
 
-### Create Admin Superuser
+### Create Admin Superuser (Optional)
 
 ```bash
 python manage.py createsuperuser
